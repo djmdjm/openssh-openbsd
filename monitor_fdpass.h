@@ -1,7 +1,8 @@
-/*	$OpenBSD: scard.h,v 1.6.6.2 2002/05/17 00:03:24 miod Exp $	*/
+/*	$OpenBSD: monitor_fdpass.h,v 1.2.4.1 2002/05/17 00:03:23 miod Exp $	*/
 
 /*
- * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright 2002 Niels Provos <provos@citi.umich.edu>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,17 +25,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SCARD_H
-#define SCARD_H
+#ifndef _MM_FDPASS_H_
+#define _MM_FDPASS_H_
 
-#include "key.h"
+void mm_send_fd(int, int);
+int mm_receive_fd(int);
 
-#define SCARD_ERROR_FAIL	-1
-#define SCARD_ERROR_NOCARD	-2
-#define SCARD_ERROR_APPLET	-3
-
-Key	**sc_get_keys(const char*, const char*);
-void	 sc_close(void);
-int	 sc_put_key(Key *, const char*);
-
-#endif
+#endif /* _MM_FDPASS_H_ */

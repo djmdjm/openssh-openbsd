@@ -1,7 +1,8 @@
-/*	$OpenBSD: scard.h,v 1.6.6.2 2002/05/17 00:03:24 miod Exp $	*/
+/*	$OpenBSD: monitor_mm.h,v 1.2.4.1 2002/05/17 00:03:23 miod Exp $	*/
 
 /*
- * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright 2002 Niels Provos <provos@citi.umich.edu>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,17 +25,42 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SCARD_H
-#define SCARD_H
+#ifndef _MM_H_
+#define _MM_H_
+#include "tree.h"
 
-#include "key.h"
+struct mm_share {
+	RB_ENTRY(mm_share) next;
+	void *address;
+	size_t size;
+};
 
-#define SCARD_ERROR_FAIL	-1
-#define SCARD_ERROR_NOCARD	-2
-#define SCARD_ERROR_APPLET	-3
+struct mm_master {
+	RB_HEAD(mmtree, mm_share) rb_free;
+	struct mmtree rb_allocated;
+	void *address;
+	size_t size;
 
-Key	**sc_get_keys(const char*, const char*);
-void	 sc_close(void);
-int	 sc_put_key(Key *, const char*);
+	struct mm_master *mmalloc;	/* Used to completely share */
 
-#endif
+	int write;		/* used to writing to other party */
+	int read;		/* used for reading from other party */
+};
+
+RB_PROTOTYPE(mmtree, mm_share, next, mm_compare)
+
+#define MM_MINSIZE		128
+
+#define MM_ADDRESS_END(x)	(void *)((u_char *)(x)->address + (x)->size)
+
+struct mm_master *mm_create(struct mm_master *, size_t);
+void mm_destroy(struct mm_master *);
+
+void mm_share_sync(struct mm_master **, struct mm_master **);
+
+void *mm_malloc(struct mm_master *, size_t);
+void *mm_xmalloc(struct mm_master *, size_t);
+void mm_free(struct mm_master *, void *);
+
+void mm_memvalid(struct mm_master *, void *, size_t);
+#endif /* _MM_H_ */
