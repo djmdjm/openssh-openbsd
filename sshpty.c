@@ -12,10 +12,10 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: pty.c,v 1.16.2.2 2001/02/19 17:19:11 jason Exp $");
+RCSID("$OpenBSD: sshpty.c,v 1.1.4.1 2001/03/21 19:46:32 jason Exp $");
 
 #include <util.h>
-#include "pty.h"
+#include "sshpty.h"
 #include "log.h"
 
 /* Pty allocated with _getpty gets broken if we do I_PUSH:es to it. */
