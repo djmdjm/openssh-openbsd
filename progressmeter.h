@@ -1,6 +1,6 @@
-/*	$OpenBSD: msg.h,v 1.1.4.2 2003/04/03 22:35:17 miod Exp $	*/
+/*	$OpenBSD: progressmeter.h,v 1.1.6.1 2003/04/03 22:35:17 miod Exp $	*/
 /*
- * Copyright (c) 2002 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2002 Nils Nordman.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,10 +22,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SSH_MSG_H
-#define SSH_MSG_H
 
-void	 ssh_msg_send(int, u_char, Buffer *);
-int	 ssh_msg_recv(int, Buffer *);
-
-#endif
+void	start_progress_meter(char *, off_t, off_t *);
+void	stop_progress_meter(void);
