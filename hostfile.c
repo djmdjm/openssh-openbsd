@@ -36,7 +36,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: hostfile.c,v 1.33 2005/03/01 10:40:26 djm Exp $");
+RCSID("$OpenBSD: hostfile.c,v 1.32.4.1 2005/03/10 16:28:27 brad Exp $");
 
 #include <resolv.h>
 #include <openssl/hmac.h>

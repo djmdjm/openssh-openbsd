@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: readpass.c,v 1.31 2004/10/29 22:53:56 djm Exp $");
+RCSID("$OpenBSD: readpass.c,v 1.30.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include <readpassphrase.h>
 

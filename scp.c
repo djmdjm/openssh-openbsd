@@ -71,7 +71,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: scp.c,v 1.119 2005/01/24 10:22:06 dtucker Exp $");
+RCSID("$OpenBSD: scp.c,v 1.117.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include "xmalloc.h"
 #include "atomicio.h"

@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth2-pubkey.c,v 1.9 2004/12/11 01:48:56 dtucker Exp $");
+RCSID("$OpenBSD: auth2-pubkey.c,v 1.7.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include "ssh.h"
 #include "ssh2.h"

@@ -12,7 +12,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: canohost.c,v 1.42 2005/02/18 03:05:53 djm Exp $");
+RCSID("$OpenBSD: canohost.c,v 1.41.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include "packet.h"
 #include "xmalloc.h"

@@ -1,4 +1,4 @@
-#	$OpenBSD: sshd_config,v 1.70 2004/12/23 23:11:00 djm Exp $
+#	$OpenBSD: sshd_config,v 1.69.2.1 2005/03/10 16:28:28 brad Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.

@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: misc.c,v 1.28 2005/03/01 10:09:52 djm Exp $");
+RCSID("$OpenBSD: misc.c,v 1.25.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include "misc.h"
 #include "log.h"

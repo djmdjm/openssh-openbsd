@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth.c,v 1.57 2005/01/22 08:17:59 dtucker Exp $");
+RCSID("$OpenBSD: auth.c,v 1.56.2.1 2005/03/10 16:28:27 brad Exp $");
 
 #include <libgen.h>
 
