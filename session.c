@@ -33,7 +33,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: session.c,v 1.88 2001/06/12 21:30:57 markus Exp $");
+RCSID("$OpenBSD: session.c,v 1.74.2.1 2001/06/12 22:31:48 jason Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"
@@ -46,6 +46,7 @@ RCSID("$OpenBSD: session.c,v 1.88 2001/06/12 21:30:57 markus Exp $");
 #include "uidswap.h"
 #include "compat.h"
 #include "channels.h"
+#include "nchan.h"
 #include "bufaux.h"
 #include "auth.h"
 #include "auth-options.h"
@@ -86,11 +87,8 @@ struct Session {
 
 Session *session_new(void);
 void	session_set_fds(Session *s, int fdin, int fdout, int fderr);
-void	session_pty_cleanup(void *session);
-int	session_pty_req(Session *s);
+void	session_pty_cleanup(Session *s);
 void	session_proctitle(Session *s);
-int	session_setup_x11fwd(Session *s);
-void	session_close(Session *s);
 void	do_exec_pty(Session *s, const char *command);
 void	do_exec_no_pty(Session *s, const char *command);
 void	do_login(Session *s, const char *command);
@@ -160,6 +158,27 @@ do_authenticated(Authctxt *authctxt)
 }
 
 /*
+ * Function to perform cleanup if we get aborted abnormally (e.g., due to a
+ * dropped connection).
+ */
+void
+pty_cleanup_proc(void *session)
+{
+	Session *s=session;
+	if (s == NULL)
+		fatal("pty_cleanup_proc: no session");
+	debug("pty_cleanup_proc: %s", s->tty);
+
+	if (s->pid != 0) {
+		/* Record that the user has logged out. */
+		record_logout(s->pid, s->tty);
+	}
+
+	/* Release the pseudo-tty. */
+	pty_release(s->tty);
+}
+
+/*
  * Prepares for an interactive session.  This is called after the user has
  * been successfully authenticated.  During this message exchange, pseudo
  * terminals are allocated, X11, TCP/IP, and authentication agent forwardings
@@ -170,7 +189,7 @@ do_authenticated1(Authctxt *authctxt)
 {
 	Session *s;
 	char *command;
-	int success, type, plen, screen_flag;
+	int success, type, n_bytes, plen, screen_flag, have_pty = 0;
 	int compression_level = 0, enable_compression_after_reply = 0;
 	u_int proto_len, data_len, dlen;
 
@@ -203,10 +222,70 @@ do_authenticated1(Authctxt *authctxt)
 			break;
 
 		case SSH_CMSG_REQUEST_PTY:
-			success = session_pty_req(s);
+			if (no_pty_flag) {
+				debug("Allocating a pty not permitted for this authentication.");
+				break;
+			}
+			if (have_pty)
+				packet_disconnect("Protocol error: you already have a pty.");
+
+			debug("Allocating pty.");
+
+			/* Allocate a pty and open it. */
+			if (!pty_allocate(&s->ptyfd, &s->ttyfd, s->tty,
+			    sizeof(s->tty))) {
+				error("Failed to allocate pty.");
+				break;
+			}
+			fatal_add_cleanup(pty_cleanup_proc, (void *)s);
+			pty_setowner(s->pw, s->tty);
+
+			/* Get TERM from the packet.  Note that the value may be of arbitrary length. */
+			s->term = packet_get_string(&dlen);
+			packet_integrity_check(dlen, strlen(s->term), type);
+			/* packet_integrity_check(plen, 4 + dlen + 4*4 + n_bytes, type); */
+			/* Remaining bytes */
+			n_bytes = plen - (4 + dlen + 4 * 4);
+
+			if (strcmp(s->term, "") == 0) {
+				xfree(s->term);
+				s->term = NULL;
+			}
+			/* Get window size from the packet. */
+			s->row = packet_get_int();
+			s->col = packet_get_int();
+			s->xpixel = packet_get_int();
+			s->ypixel = packet_get_int();
+			pty_change_window_size(s->ptyfd, s->row, s->col, s->xpixel, s->ypixel);
+
+			/* Get tty modes from the packet. */
+			tty_parse_modes(s->ttyfd, &n_bytes);
+			packet_integrity_check(plen, 4 + dlen + 4 * 4 + n_bytes, type);
+
+			session_proctitle(s);
+
+			/* Indicate that we now have a pty. */
+			success = 1;
+			have_pty = 1;
 			break;
 
 		case SSH_CMSG_X11_REQUEST_FORWARDING:
+			if (!options.x11_forwarding) {
+				packet_send_debug("X11 forwarding disabled in server configuration file.");
+				break;
+			}
+			if (!options.xauth_location) {
+				packet_send_debug("No xauth program; cannot forward with spoofing.");
+				break;
+			}
+			if (no_x11_forwarding_flag) {
+				packet_send_debug("X11 forwarding not permitted for this authentication.");
+				break;
+			}
+			debug("Received request for X11 forwarding with auth spoofing.");
+			if (s->display != NULL)
+				packet_disconnect("Protocol error: X11 display already set.");
+
 			s->auth_proto = packet_get_string(&proto_len);
 			s->auth_data = packet_get_string(&data_len);
 
@@ -218,18 +297,20 @@ do_authenticated1(Authctxt *authctxt)
 				if (!screen_flag)
 					debug2("Buggy client: "
 					    "X11 screen flag missing");
+				packet_integrity_check(plen,
+				    4 + proto_len + 4 + data_len + 4, type);
 				s->screen = packet_get_int();
 			} else {
+				packet_integrity_check(plen,
+				    4 + proto_len + 4 + data_len, type);
 				s->screen = 0;
 			}
-			packet_done();
-			success = session_setup_x11fwd(s);
-			if (!success) {
-				xfree(s->auth_proto);
-				xfree(s->auth_data);
-				s->auth_proto = NULL;
-				s->auth_data = NULL;
-			}
+			s->display = x11_create_display_inet(s->screen, options.x11_display_offset);
+
+			if (s->display == NULL)
+				break;
+
+			success = 1;
 			break;
 
 		case SSH_CMSG_AGENT_REQUEST_FORWARDING:
@@ -275,13 +356,13 @@ do_authenticated1(Authctxt *authctxt)
 				command = forced_command;
 				debug("Forced command '%.500s'", forced_command);
 			}
-			if (s->ttyfd != -1)
+			if (have_pty)
 				do_exec_pty(s, command);
 			else
 				do_exec_no_pty(s, command);
+
 			if (command != NULL)
 				xfree(command);
-			session_close(s);
 			return;
 
 		default:
@@ -501,6 +582,7 @@ do_exec_pty(Session *s, const char *command)
 	} else {
 		server_loop(pid, ptyfd, fdout, -1);
 		/* server_loop _has_ closed ptyfd and fdout. */
+		session_pty_cleanup(s);
 	}
 }
 
@@ -705,10 +787,7 @@ do_child(Session *s, const char *command)
 	extern char **environ;
 	struct stat st;
 	char *argv[10];
-	int do_xauth;
-
-	do_xauth =
-	    s->display != NULL && s->auth_proto != NULL && s->auth_data != NULL;
+	int do_xauth = s->auth_proto != NULL && s->auth_data != NULL;
 
 	/* remove hostkey from the child's memory */
 	destroy_sensitive_data();
@@ -930,11 +1009,10 @@ do_child(Session *s, const char *command)
 	if (!options.use_login) {
 		/* ignore _PATH_SSH_USER_RC for subsystems */
 		if (!s->is_subsystem && (stat(_PATH_SSH_USER_RC, &st) >= 0)) {
-			snprintf(cmd, sizeof cmd, "%s -c '%s %s'",
-			    shell, _PATH_BSHELL, _PATH_SSH_USER_RC);
 			if (debug_flag)
-				fprintf(stderr, "Running %s\n", cmd);
-			f = popen(cmd, "w");
+				fprintf(stderr, "Running %s %s\n", _PATH_BSHELL,
+				    _PATH_SSH_USER_RC);
+			f = popen(_PATH_BSHELL " " _PATH_SSH_USER_RC, "w");
 			if (f) {
 				if (do_xauth)
 					fprintf(f, "%s %s\n", s->auth_proto,
@@ -1078,6 +1156,7 @@ session_new(void)
 		debug("session_new: init");
 		for(i = 0; i < MAX_SESSIONS; i++) {
 			sessions[i].used = 0;
+			sessions[i].self = i;
 		}
 		did_init = 1;
 	}
@@ -1089,7 +1168,6 @@ session_new(void)
 			s->ptyfd = -1;
 			s->ttyfd = -1;
 			s->used = 1;
-			s->self = i;
 			debug("session_new: session %d", i);
 			return s;
 		}
@@ -1178,24 +1256,13 @@ session_pty_req(Session *s)
 	u_int len;
 	int n_bytes;
 
-	if (no_pty_flag) {
-		debug("Allocating a pty not permitted for this authentication.");
+	if (no_pty_flag)
 		return 0;
-	}
-	if (s->ttyfd != -1) {
-		packet_disconnect("Protocol error: you already have a pty.");
+	if (s->ttyfd != -1)
 		return 0;
-	}
-
 	s->term = packet_get_string(&len);
-
-	if (compat20) {
-		s->col = packet_get_int();
-		s->row = packet_get_int();
-	} else {
-		s->row = packet_get_int();
-		s->col = packet_get_int();
-	}
+	s->col = packet_get_int();
+	s->row = packet_get_int();
 	s->xpixel = packet_get_int();
 	s->ypixel = packet_get_int();
 
@@ -1203,12 +1270,9 @@ session_pty_req(Session *s)
 		xfree(s->term);
 		s->term = NULL;
 	}
-
 	/* Allocate a pty and open it. */
-	debug("Allocating pty.");
 	if (!pty_allocate(&s->ptyfd, &s->ttyfd, s->tty, sizeof(s->tty))) {
-		if (s->term)
-			xfree(s->term);
+		xfree(s->term);
 		s->term = NULL;
 		s->ptyfd = -1;
 		s->ttyfd = -1;
@@ -1216,24 +1280,21 @@ session_pty_req(Session *s)
 		return 0;
 	}
 	debug("session_pty_req: session %d alloc %s", s->self, s->tty);
-
-	/* for SSH1 the tty modes length is not given */
-	if (!compat20)
-		n_bytes = packet_remaining();
-	tty_parse_modes(s->ttyfd, &n_bytes);
-
 	/*
 	 * Add a cleanup function to clear the utmp entry and record logout
 	 * time in case we call fatal() (e.g., the connection gets closed).
 	 */
-	fatal_add_cleanup(session_pty_cleanup, (void *)s);
+	fatal_add_cleanup(pty_cleanup_proc, (void *)s);
 	pty_setowner(s->pw, s->tty);
-
-	/* Set window size from the packet. */
+	/* Get window size from the packet. */
 	pty_change_window_size(s->ptyfd, s->row, s->col, s->xpixel, s->ypixel);
 
+	/* Get tty modes from the packet. */
+	tty_parse_modes(s->ttyfd, &n_bytes);
 	packet_done();
+
 	session_proctitle(s);
+
 	return 1;
 }
 
@@ -1267,7 +1328,17 @@ session_subsystem_req(Session *s)
 int
 session_x11_req(Session *s)
 {
-	int success;
+	if (no_x11_forwarding_flag) {
+		debug("X11 forwarding disabled in user configuration file.");
+		return 0;
+	}
+	if (!options.x11_forwarding) {
+		debug("X11 forwarding disabled in server configuration file.");
+		return 0;
+	}
+	debug("Received request for X11 forwarding with auth spoofing.");
+	if (s->display != NULL)
+		packet_disconnect("Protocol error: X11 display already set.");
 
 	s->single_connection = packet_get_char();
 	s->auth_proto = packet_get_string(NULL);
@@ -1275,14 +1346,13 @@ session_x11_req(Session *s)
 	s->screen = packet_get_int();
 	packet_done();
 
-	success = session_setup_x11fwd(s);
-	if (!success) {
+	s->display = x11_create_display_inet(s->screen, options.x11_display_offset);
+	if (s->display == NULL) {
 		xfree(s->auth_proto);
 		xfree(s->auth_data);
-		s->auth_proto = NULL;
-		s->auth_data = NULL;
+		return 0;
 	}
-	return success;
+	return 1;
 }
 
 int
@@ -1407,27 +1477,19 @@ session_set_fds(Session *s, int fdin, int fdout, int fderr)
 	    1);
 }
 
-/*
- * Function to perform pty cleanup. Also called if we get aborted abnormally
- * (e.g., due to a dropped connection).
- */
 void
-session_pty_cleanup(void *session)
+session_pty_cleanup(Session *s)
 {
-	Session *s = session;
-
-	if (s == NULL) {
-		error("session_pty_cleanup: no session");
-		return;
-	}
-	if (s->ttyfd == -1)
+	if (s == NULL || s->ttyfd == -1)
 		return;
 
 	debug("session_pty_cleanup: session %d release %s", s->self, s->tty);
 
+	/* Cancel the cleanup function. */
+	fatal_remove_cleanup(pty_cleanup_proc, (void *)s);
+
 	/* Record that the user has logged out. */
-	if (s->pid != 0)
-		record_logout(s->pid, s->tty);
+	record_logout(s->pid, s->tty);
 
 	/* Release the pseudo-tty. */
 	pty_release(s->tty);
@@ -1449,7 +1511,7 @@ session_exit_message(Session *s, int status)
 		fatal("session_close: no session");
 	c = channel_lookup(s->chanid);
 	if (c == NULL)
-		fatal("session_exit_message: session %d: no channel %d",
+		fatal("session_close: session %d: no channel %d",
 		    s->self, s->chanid);
 	debug("session_exit_message: session %d channel %d pid %d",
 	    s->self, s->chanid, s->pid);
@@ -1487,13 +1549,9 @@ session_exit_message(Session *s, int status)
 }
 
 void
-session_close(Session *s)
+session_free(Session *s)
 {
-	debug("session_close: session %d pid %d", s->self, s->pid);
-	if (s->ttyfd != -1) {
-		fatal_remove_cleanup(session_pty_cleanup, (void *)s);
-		session_pty_cleanup(s);
-	}
+	debug("session_free: session %d pid %d", s->self, s->pid);
 	if (s->term)
 		xfree(s->term);
 	if (s->display)
@@ -1503,6 +1561,13 @@ session_close(Session *s)
 	if (s->auth_proto)
 		xfree(s->auth_proto);
 	s->used = 0;
+}
+
+void
+session_close(Session *s)
+{
+	session_pty_cleanup(s);
+	session_free(s);
 	session_proctitle(s);
 }
 
@@ -1575,38 +1640,9 @@ session_proctitle(Session *s)
 		setproctitle("%s@%s", s->pw->pw_name, session_tty_list());
 }
 
-int
-session_setup_x11fwd(Session *s)
-{
-	struct stat st;
-
-	if (no_x11_forwarding_flag) {
-		packet_send_debug("X11 forwarding disabled in user configuration file.");
-		return 0;
-	}
-	if (!options.x11_forwarding) {
-		debug("X11 forwarding disabled in server configuration file.");
-		return 0;
-	}
-	if (!options.xauth_location ||
-	    (stat(options.xauth_location, &st) == -1)) {
-		packet_send_debug("No xauth program; cannot forward with spoofing.");
-		return 0;
-	}
-	if (s->display != NULL) {
-		debug("X11 display already set.");
-		return 0;
-	}
-	s->display = x11_create_display_inet(s->screen, options.x11_display_offset);
-	if (s->display == NULL) {
-		debug("x11_create_display_inet failed.");
-		return 0;
-	}
-	return 1;
-}
-
 void
 do_authenticated2(Authctxt *authctxt)
 {
+
 	server_loop2();
 }
