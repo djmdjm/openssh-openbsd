@@ -1,6 +1,5 @@
-/*      $OpenBSD: mac.h,v 1.1.2.6 2002/03/08 17:04:42 brad Exp $   */
 /*
- * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2002 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,6 +22,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-int	 mac_valid(const char *);
-int	 mac_init(Mac *, char *);
-u_char	*mac_compute(Mac *, u_int32_t, u_char *, int);
+#include "includes.h"
+RCSID("$OpenBSD: fatal.c,v 1.1.4.1 2002/03/08 17:04:42 brad Exp $");
+
+#include "log.h"
+
+/* Fatal messages.  This function never returns. */
+
+void
+fatal(const char *fmt,...)
+{
+	va_list args;
+	va_start(args, fmt);
+	do_log(SYSLOG_LEVEL_FATAL, fmt, args);
+	va_end(args);
+	fatal_cleanup();
+}
