@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: compat.c,v 1.67 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: compat.c,v 1.65.4.1 2003/05/11 12:01:52 margarida Exp $");
 
 #include "buffer.h"
 #include "packet.h"
@@ -188,7 +188,7 @@ proto_spec(const char *spec)
 			ret |= SSH_PROTO_2;
 			break;
 		default:
-			logit("ignoring bad proto spec: '%s'.", p);
+			log("ignoring bad proto spec: '%s'.", p);
 			break;
 		}
 	}
