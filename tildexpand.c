@@ -11,7 +11,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: tildexpand.c,v 1.15 2004/05/21 08:43:03 markus Exp $");
+RCSID("$OpenBSD: tildexpand.c,v 1.13.8.1 2004/08/19 04:13:28 brad Exp $");
 
 #include "xmalloc.h"
 #include "log.h"

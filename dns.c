@@ -1,4 +1,4 @@
-/*	$OpenBSD: dns.c,v 1.10 2004/06/21 17:36:31 avsm Exp $	*/
+/*	$OpenBSD: dns.c,v 1.9.2.1 2004/08/19 04:13:26 brad Exp $	*/
 
 /*
  * Copyright (c) 2003 Wesley Griffin. All rights reserved.
@@ -43,7 +43,7 @@
 #include "uuencode.h"
 
 extern char *__progname;
-RCSID("$OpenBSD: dns.c,v 1.10 2004/06/21 17:36:31 avsm Exp $");
+RCSID("$OpenBSD: dns.c,v 1.9.2.1 2004/08/19 04:13:26 brad Exp $");
 
 #ifndef LWRES
 static const char *errset_text[] = {

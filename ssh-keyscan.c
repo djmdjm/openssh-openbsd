@@ -7,7 +7,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: ssh-keyscan.c,v 1.50 2004/08/11 21:44:32 avsm Exp $");
+RCSID("$OpenBSD: ssh-keyscan.c,v 1.47.2.1 2004/08/19 04:13:27 brad Exp $");
 
 #include <sys/queue.h>
 #include <errno.h>

@@ -35,7 +35,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: sshtty.c,v 1.6 2004/05/08 00:01:37 deraadt Exp $");
+RCSID("$OpenBSD: sshtty.c,v 1.5.2.1 2004/08/19 04:13:28 brad Exp $");
 
 #include "sshpty.h"
 #include "log.h"

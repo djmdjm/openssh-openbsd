@@ -16,7 +16,7 @@
 
 #include "includes.h"
 
-RCSID("$OpenBSD: sftp.c,v 1.56 2004/07/11 17:48:47 deraadt Exp $");
+RCSID("$OpenBSD: sftp.c,v 1.45.2.1 2004/08/19 04:13:27 brad Exp $");
 
 #include <glob.h>
 

@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssh-gss.h,v 1.5 2004/06/21 17:36:31 avsm Exp $	*/
+/*	$OpenBSD: ssh-gss.h,v 1.4.2.1 2004/08/19 04:13:27 brad Exp $	*/
 /*
  * Copyright (c) 2001-2003 Simon Wilkinson. All rights reserved.
  *

@@ -35,7 +35,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: authfd.c,v 1.64 2004/08/11 21:44:31 avsm Exp $");
+RCSID("$OpenBSD: authfd.c,v 1.63.2.1 2004/08/19 04:13:26 brad Exp $");
 
 #include <openssl/evp.h>
 

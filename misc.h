@@ -1,4 +1,4 @@
-/*	$OpenBSD: misc.h,v 1.17 2004/08/11 21:43:05 avsm Exp $	*/
+/*	$OpenBSD: misc.h,v 1.12.10.1 2004/08/19 04:13:26 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: sshpty.h,v 1.5 2004/05/08 00:01:37 deraadt Exp $	*/
+/*	$OpenBSD: sshpty.h,v 1.4.10.1 2004/08/19 04:13:28 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

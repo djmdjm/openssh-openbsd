@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: sshconnect2.c,v 1.138 2004/06/13 12:53:24 djm Exp $");
+RCSID("$OpenBSD: sshconnect2.c,v 1.135.2.1 2004/08/19 04:13:27 brad Exp $");
 
 #include "ssh.h"
 #include "ssh2.h"
@@ -457,7 +457,7 @@ input_userauth_pk_ok(int type, u_int32_t seq, void *ctxt)
 	 * moved to the end of the queue.  this also avoids confusion by
 	 * duplicate keys
 	 */
-	TAILQ_FOREACH_REVERSE(id, &authctxt->keys, idlist, next) {
+	TAILQ_FOREACH_REVERSE(id, &authctxt->keys, next, idlist) {
 		if (key_equal(key, id->key)) {
 			sent = sign_and_send_pubkey(authctxt, id);
 			break;
