@@ -37,7 +37,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: packet.c,v 1.106 2003/04/08 20:21:29 itojun Exp $");
+RCSID("$OpenBSD: packet.c,v 1.102.2.1 2003/09/16 20:50:43 brad Exp $");
 
 #include <sys/queue.h>
 
@@ -108,7 +108,7 @@ static int compression_buffer_ready = 0;
 static int packet_compression = 0;
 
 /* default maximum packet size */
-int max_packet_size = 32768;
+u_int max_packet_size = 32768;
 
 /* Flag indicating whether this module has been initialized. */
 static int initialized = 0;
@@ -265,7 +265,7 @@ packet_set_iv(int mode, u_char *dat)
 	cipher_set_keyiv(cc, dat);
 }
 int
-packet_get_ssh1_cipher()
+packet_get_ssh1_cipher(void)
 {
 	return (cipher_get_number(receive_context.cipher));
 }
@@ -630,7 +630,14 @@ set_newkeys(int mode)
 			buffer_compress_init_recv();
 		comp->enabled = 1;
 	}
-	*max_blocks = ((u_int64_t)1 << (enc->block_size*2));
+	/*
+	 * The 2^(blocksize*2) limit is too expensive for 3DES,
+	 * blowfish, etc, so enforce a 1GB limit for small blocksizes.
+	 */
+	if (enc->block_size >= 16)
+		*max_blocks = (u_int64_t)1 << (enc->block_size*2);
+	else
+		*max_blocks = ((u_int64_t)1 << 30) / enc->block_size;
 	if (rekey_limit)
 		*max_blocks = MIN(*max_blocks, rekey_limit / enc->block_size);
 }
@@ -1435,8 +1442,8 @@ packet_is_interactive(void)
 	return interactive_mode;
 }
 
-int
-packet_set_maxsize(int s)
+u_int
+packet_set_maxsize(u_int s)
 {
 	static int called = 0;
 

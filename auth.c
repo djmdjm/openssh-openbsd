@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth.c,v 1.47 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: auth.c,v 1.46.2.1 2003/09/16 20:50:42 brad Exp $");
 
 #include <libgen.h>
 
@@ -91,7 +91,7 @@ allowed_user(struct passwd * pw)
 	}
 
 	if (options.num_deny_users > 0 || options.num_allow_users > 0) {
-		hostname = get_canonical_hostname(options.verify_reverse_mapping);
+		hostname = get_canonical_hostname(options.use_dns);
 		ipaddr = get_remote_ipaddr();
 	}
 
@@ -470,4 +470,23 @@ auth_debug_reset(void)
 		buffer_init(&auth_debug);
 		auth_debug_init = 1;
 	}
+}
+
+struct passwd *
+fakepw(void)
+{
+	static struct passwd fake;
+
+	memset(&fake, 0, sizeof(fake));
+	fake.pw_name = "NOUSER";
+	fake.pw_passwd =
+	    "$2a$06$r3.juUaHZDlIbQaO2dS9FuYxL1W9M81R1Tc92PoSNmzvpEqLkLGrK";	
+	fake.pw_gecos = "NOUSER";
+	fake.pw_uid = -1;
+	fake.pw_gid = -1;
+	fake.pw_class = "";
+	fake.pw_dir = "/nonexist";
+	fake.pw_shell = "/nonexist";
+
+	return (&fake);
 }

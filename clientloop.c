@@ -59,7 +59,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: clientloop.c,v 1.109 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: clientloop.c,v 1.105.2.1 2003/09/16 20:50:42 brad Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"
@@ -395,9 +395,9 @@ client_suspend_self(Buffer *bin, Buffer *bout, Buffer *berr)
 
 	/* Flush stdout and stderr buffers. */
 	if (buffer_len(bout) > 0)
-		atomicio(write, fileno(stdout), buffer_ptr(bout), buffer_len(bout));
+		atomicio(vwrite, fileno(stdout), buffer_ptr(bout), buffer_len(bout));
 	if (buffer_len(berr) > 0)
-		atomicio(write, fileno(stderr), buffer_ptr(berr), buffer_len(berr));
+		atomicio(vwrite, fileno(stderr), buffer_ptr(berr), buffer_len(berr));
 
 	leave_raw_mode();
 
@@ -574,6 +574,19 @@ process_escapes(Buffer *bin, Buffer *bout, Buffer *berr, char *buf, int len)
 				/* We have been continued. */
 				continue;
 
+			case 'B':
+				if (compat20) {
+					snprintf(string, sizeof string,
+					    "%cB\r\n", escape_char);
+					buffer_append(berr, string,
+					    strlen(string));
+					channel_request_start(session_ident,
+					    "break", 0);
+					packet_put_int(1000);
+					packet_send();
+				}
+				continue;
+
 			case 'R':
 				if (compat20) {
 					if (datafellows & SSH_BUG_NOREKEY)
@@ -636,6 +649,7 @@ process_escapes(Buffer *bin, Buffer *bout, Buffer *berr, char *buf, int len)
 "%c?\r\n\
 Supported escape sequences:\r\n\
 %c.  - terminate connection\r\n\
+%cB  - send a BREAK to the remote system\r\n\
 %cC  - open a command line\r\n\
 %cR  - Request rekey (SSH protocol 2 only)\r\n\
 %c^Z - suspend ssh\r\n\
@@ -646,7 +660,7 @@ Supported escape sequences:\r\n\
 (Note that escapes are only recognized immediately after newline.)\r\n",
 				    escape_char, escape_char, escape_char, escape_char,
 				    escape_char, escape_char, escape_char, escape_char,
-				    escape_char, escape_char);
+				    escape_char, escape_char, escape_char);
 				buffer_append(berr, string, strlen(string));
 				continue;
 
@@ -1145,7 +1159,7 @@ client_request_forwarded_tcpip(const char *request_type, int rchan)
 	c = channel_new("forwarded-tcpip",
 	    SSH_CHANNEL_CONNECTING, sock, sock, -1,
 	    CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_WINDOW_DEFAULT, 0,
-	    xstrdup(originator_address), 1);
+	    originator_address, 1);
 	xfree(originator_address);
 	xfree(listen_address);
 	return c;
@@ -1181,8 +1195,7 @@ client_request_x11(const char *request_type, int rchan)
 		return NULL;
 	c = channel_new("x11",
 	    SSH_CHANNEL_X11_OPEN, sock, sock, -1,
-	    CHAN_TCP_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT, 0,
-	    xstrdup("x11"), 1);
+	    CHAN_TCP_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT, 0, "x11", 1);
 	c->force_drain = 1;
 	return c;
 }
@@ -1204,7 +1217,7 @@ client_request_agent(const char *request_type, int rchan)
 	c = channel_new("authentication agent connection",
 	    SSH_CHANNEL_OPEN, sock, sock, -1,
 	    CHAN_X11_WINDOW_DEFAULT, CHAN_TCP_WINDOW_DEFAULT, 0,
-	    xstrdup("authentication agent connection"), 1);
+	    "authentication agent connection", 1);
 	c->force_drain = 1;
 	return c;
 }

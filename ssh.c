@@ -40,7 +40,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: ssh.c,v 1.191 2003/04/08 20:21:29 itojun Exp $");
+RCSID("$OpenBSD: ssh.c,v 1.190.2.1 2003/09/16 20:50:44 brad Exp $");
 
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -74,10 +74,6 @@ RCSID("$OpenBSD: ssh.c,v 1.191 2003/04/08 20:21:29 itojun Exp $");
 #endif
 
 extern char *__progname;
-
-/* Flag indicating whether IPv4 or IPv6.  This can be set on the command line.
-   Default value is AF_UNSPEC means both IPv4 and IPv6. */
-int IPv4or6 = AF_UNSPEC;
 
 /* Flag indicating whether debug mode is on.  This can be set on the command line. */
 int debug_flag = 0;
@@ -154,9 +150,6 @@ usage(void)
 	     _PATH_SSH_USER_CONFFILE);
 	fprintf(stderr, "  -A          Enable authentication agent forwarding.\n");
 	fprintf(stderr, "  -a          Disable authentication agent forwarding (default).\n");
-#ifdef AFS
-	fprintf(stderr, "  -k          Disable Kerberos ticket and AFS token forwarding.\n");
-#endif				/* AFS */
 	fprintf(stderr, "  -X          Enable X11 connection forwarding.\n");
 	fprintf(stderr, "  -x          Disable X11 connection forwarding (default).\n");
 	fprintf(stderr, "  -i file     Identity for public key authentication "
@@ -271,10 +264,10 @@ again:
 			options.protocol = SSH_PROTO_2;
 			break;
 		case '4':
-			IPv4or6 = AF_INET;
+			options.address_family = AF_INET;
 			break;
 		case '6':
-			IPv4or6 = AF_INET6;
+			options.address_family = AF_INET6;
 			break;
 		case 'n':
 			stdin_null_flag = 1;
@@ -301,12 +294,9 @@ again:
 		case 'A':
 			options.forward_agent = 1;
 			break;
-#ifdef AFS
 		case 'k':
-			options.kerberos_tgt_passing = 0;
-			options.afs_token_passing = 0;
+			/* ignored for backward compatibility */
 			break;
-#endif
 		case 'i':
 			if (stat(optarg, &st) < 0) {
 				fprintf(stderr, "Warning: Identity file %s "
@@ -333,22 +323,22 @@ again:
 			tty_flag = 1;
 			break;
 		case 'v':
-			if (0 == debug_flag) {
+			if (debug_flag == 0) {
 				debug_flag = 1;
 				options.log_level = SYSLOG_LEVEL_DEBUG1;
-			} else if (options.log_level < SYSLOG_LEVEL_DEBUG3) {
-				options.log_level++;
+			} else {
+				if (options.log_level < SYSLOG_LEVEL_DEBUG3)
+					options.log_level++;
 				break;
-			} else
-				fatal("Too high debugging level.");
+			}
 			/* fallthrough */
 		case 'V':
 			fprintf(stderr,
-			    "%s, SSH protocols %d.%d/%d.%d, OpenSSL 0x%8.8lx\n",
+			    "%s, SSH protocols %d.%d/%d.%d, %s\n",
 			    SSH_VERSION,
 			    PROTOCOL_MAJOR_1, PROTOCOL_MINOR_1,
 			    PROTOCOL_MAJOR_2, PROTOCOL_MINOR_2,
-			    SSLeay());
+			    SSLeay_version(SSLEAY_VERSION));
 			if (opt == 'V')
 				exit(0);
 			break;
@@ -445,7 +435,7 @@ again:
 				    optarg);
 				exit(1);
 			}
-			add_local_forward(&options, fwd_port, "socks4", 0);
+			add_local_forward(&options, fwd_port, "socks", 0);
 			break;
 
 		case 'C':
@@ -505,7 +495,6 @@ again:
 
 	SSLeay_add_all_algorithms();
 	ERR_load_crypto_strings();
-	channel_set_af(IPv4or6);
 
 	/* Initialize the command to execute on remote host. */
 	buffer_init(&command);
@@ -577,6 +566,8 @@ again:
 	/* Fill configuration defaults. */
 	fill_default_options(&options);
 
+	channel_set_af(options.address_family);
+
 	/* reinit */
 	log_init(av[0], options.log_level, SYSLOG_FACILITY_USER, 1);
 
@@ -586,20 +577,20 @@ again:
 	if (options.hostname != NULL)
 		host = options.hostname;
 
+	/* force lowercase for hostkey matching */
+	if (options.host_key_alias != NULL) {
+		for (p = options.host_key_alias; *p; p++)
+			if (isupper(*p))
+				*p = tolower(*p);
+	}
+
 	if (options.proxy_command != NULL &&
 	    strcmp(options.proxy_command, "none") == 0)
 		options.proxy_command = NULL;
 
-	/* Disable rhosts authentication if not running as root. */
-	if (original_effective_uid != 0 || !options.use_privileged_port) {
-		debug("Rhosts Authentication disabled, "
-		    "originating port will not be trusted.");
-		options.rhosts_authentication = 0;
-	}
 	/* Open a connection to the remote host. */
-
-	if (ssh_connect(host, &hostaddr, options.port, IPv4or6,
-	    options.connection_attempts,
+	if (ssh_connect(host, &hostaddr, options.port, 
+	    options.address_family, options.connection_attempts,
 	    original_effective_uid == 0 && options.use_privileged_port,
 	    options.proxy_command) != 0)
 		exit(1);
@@ -1108,7 +1099,7 @@ ssh_session2_open(void)
 	c = channel_new(
 	    "session", SSH_CHANNEL_OPENING, in, out, err,
 	    window, packetmax, CHAN_EXTENDED_WRITE,
-	    xstrdup("client-session"), /*nonblock*/0);
+	    "client-session", /*nonblock*/0);
 
 	debug3("ssh_session2_open: channel_new: %d", c->self);
 
@@ -1160,7 +1151,7 @@ load_public_identity_files(void)
 			    sizeof(Key *) * (SSH_MAX_IDENTITY_FILES - 1));
 			options.num_identity_files++;
 			options.identity_keys[0] = keys[i];
-			options.identity_files[0] = xstrdup("smartcard key");;
+			options.identity_files[0] = sc_get_key_label(keys[i]);
 		}
 		if (options.num_identity_files > SSH_MAX_IDENTITY_FILES)
 			options.num_identity_files = SSH_MAX_IDENTITY_FILES;

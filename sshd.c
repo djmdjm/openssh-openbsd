@@ -42,7 +42,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: sshd.c,v 1.265 2003/04/14 14:17:50 markus Exp $");
+RCSID("$OpenBSD: sshd.c,v 1.263.2.1 2003/09/16 20:50:44 brad Exp $");
 
 #include <openssl/dh.h>
 #include <openssl/bn.h>
@@ -179,7 +179,7 @@ u_char session_id[16];
 
 /* same for ssh2 */
 u_char *session_id2 = NULL;
-int session_id2_len = 0;
+u_int session_id2_len = 0;
 
 /* record remote hostname or ip */
 u_int utmp_len = MAXHOSTNAMELEN;
@@ -358,39 +358,37 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	snprintf(buf, sizeof buf, "SSH-%d.%d-%.100s\n", major, minor, SSH_VERSION);
 	server_version_string = xstrdup(buf);
 
-	if (client_version_string == NULL) {
-		/* Send our protocol version identification. */
-		if (atomicio(write, sock_out, server_version_string,
-		    strlen(server_version_string))
-		    != strlen(server_version_string)) {
-			logit("Could not write ident string to %s", get_remote_ipaddr());
+	/* Send our protocol version identification. */
+	if (atomicio(vwrite, sock_out, server_version_string,
+	    strlen(server_version_string))
+	    != strlen(server_version_string)) {
+		logit("Could not write ident string to %s", get_remote_ipaddr());
+		fatal_cleanup();
+	}
+
+	/* Read other sides version identification. */
+	memset(buf, 0, sizeof(buf));
+	for (i = 0; i < sizeof(buf) - 1; i++) {
+		if (atomicio(read, sock_in, &buf[i], 1) != 1) {
+			logit("Did not receive identification string from %s",
+			    get_remote_ipaddr());
 			fatal_cleanup();
 		}
-
-		/* Read other sides version identification. */
-		memset(buf, 0, sizeof(buf));
-		for (i = 0; i < sizeof(buf) - 1; i++) {
-			if (atomicio(read, sock_in, &buf[i], 1) != 1) {
-				logit("Did not receive identification string from %s",
-				    get_remote_ipaddr());
-				fatal_cleanup();
-			}
-			if (buf[i] == '\r') {
-				buf[i] = 0;
-				/* Kludge for F-Secure Macintosh < 1.0.2 */
-				if (i == 12 &&
-				    strncmp(buf, "SSH-1.5-W1.0", 12) == 0)
-					break;
-				continue;
-			}
-			if (buf[i] == '\n') {
-				buf[i] = 0;
+		if (buf[i] == '\r') {
+			buf[i] = 0;
+			/* Kludge for F-Secure Macintosh < 1.0.2 */
+			if (i == 12 &&
+			    strncmp(buf, "SSH-1.5-W1.0", 12) == 0)
 				break;
-			}
+			continue;
 		}
-		buf[sizeof(buf) - 1] = 0;
-		client_version_string = xstrdup(buf);
+		if (buf[i] == '\n') {
+			buf[i] = 0;
+			break;
+		}
 	}
+	buf[sizeof(buf) - 1] = 0;
+	client_version_string = xstrdup(buf);
 
 	/*
 	 * Check that the versions match.  In future this might accept
@@ -399,7 +397,7 @@ sshd_exchange_identification(int sock_in, int sock_out)
 	if (sscanf(client_version_string, "SSH-%d.%d-%[^\n]\n",
 	    &remote_major, &remote_minor, remote_version) != 3) {
 		s = "Protocol mismatch.\n";
-		(void) atomicio(write, sock_out, s, strlen(s));
+		(void) atomicio(vwrite, sock_out, s, strlen(s));
 		close(sock_in);
 		close(sock_out);
 		logit("Bad protocol version identification '%.100s' from %s",
@@ -460,7 +458,7 @@ sshd_exchange_identification(int sock_in, int sock_out)
 
 	if (mismatch) {
 		s = "Protocol major versions differ.\n";
-		(void) atomicio(write, sock_out, s, strlen(s));
+		(void) atomicio(vwrite, sock_out, s, strlen(s));
 		close(sock_in);
 		close(sock_out);
 		logit("Protocol major versions differ for %s: %.200s vs. %.200s",
@@ -555,8 +553,6 @@ privsep_preauth_child(void)
 	do_setusercontext(pw);
 #else
 	gidset[0] = pw->pw_gid;
-	if (setgid(pw->pw_gid) < 0)
-		fatal("setgid failed for %u", pw->pw_gid );
 	if (setgroups(1, gidset) < 0)
 		fatal("setgroups: %.100s", strerror(errno));
 	permanently_set_uid(pw);
@@ -811,7 +807,7 @@ main(int ac, char **av)
 	initialize_server_options(&options);
 
 	/* Parse command-line arguments. */
-	while ((opt = getopt(ac, av, "f:p:b:k:h:g:V:u:o:dDeiqtQ46")) != -1) {
+	while ((opt = getopt(ac, av, "f:p:b:k:h:g:u:o:dDeiqtQ46")) != -1) {
 		switch (opt) {
 		case '4':
 			IPv4or6 = AF_INET;
@@ -823,15 +819,11 @@ main(int ac, char **av)
 			config_file_name = optarg;
 			break;
 		case 'd':
-			if (0 == debug_flag) {
+			if (debug_flag == 0) {
 				debug_flag = 1;
 				options.log_level = SYSLOG_LEVEL_DEBUG1;
-			} else if (options.log_level < SYSLOG_LEVEL_DEBUG3) {
+			} else if (options.log_level < SYSLOG_LEVEL_DEBUG3)
 				options.log_level++;
-			} else {
-				fprintf(stderr, "Too high debugging level.\n");
-				exit(1);
-			}
 			break;
 		case 'D':
 			no_daemon_flag = 1;
@@ -881,11 +873,6 @@ main(int ac, char **av)
 				exit(1);
 			}
 			options.host_key_files[options.num_host_key_files++] = optarg;
-			break;
-		case 'V':
-			client_version_string = optarg;
-			/* only makes sense with inetd_flag, i.e. no listen() */
-			inetd_flag = 1;
 			break;
 		case 't':
 			test_flag = 1;
@@ -1163,7 +1150,10 @@ main(int ac, char **av)
 			 * overwrite any old pid in the file.
 			 */
 			f = fopen(options.pid_file, "w");
-			if (f) {
+			if (f == NULL) {
+				error("Couldn't create pid file \"%s\": %s",
+				    options.pid_file, strerror(errno));
+			} else {
 				fprintf(f, "%ld\n", (long) getpid());
 				fclose(f);
 			}
@@ -1405,34 +1395,6 @@ main(int ac, char **av)
 		alarm(options.login_grace_time);
 
 	sshd_exchange_identification(sock_in, sock_out);
-	/*
-	 * Check that the connection comes from a privileged port.
-	 * Rhosts-Authentication only makes sense from privileged
-	 * programs.  Of course, if the intruder has root access on his local
-	 * machine, he can connect from any port.  So do not use these
-	 * authentication methods from machines that you do not trust.
-	 */
-	if (options.rhosts_authentication &&
-	    (remote_port >= IPPORT_RESERVED ||
-	    remote_port < IPPORT_RESERVED / 2)) {
-		debug("Rhosts Authentication disabled, "
-		    "originating port %d not trusted.", remote_port);
-		options.rhosts_authentication = 0;
-	}
-#if defined(KRB4) && !defined(KRB5)
-	if (!packet_connection_is_ipv4() &&
-	    options.kerberos_authentication) {
-		debug("Kerberos Authentication disabled, only available for IPv4.");
-		options.kerberos_authentication = 0;
-	}
-#endif /* KRB4 && !KRB5 */
-#ifdef AFS
-	/* If machine has AFS, set process authentication group. */
-	if (k_hasafs()) {
-		k_setpag();
-		k_unlog();
-	}
-#endif /* AFS */
 
 	packet_set_nonblocking();
 
@@ -1584,24 +1546,10 @@ do_ssh1_kex(void)
 
 	/* Declare supported authentication types. */
 	auth_mask = 0;
-	if (options.rhosts_authentication)
-		auth_mask |= 1 << SSH_AUTH_RHOSTS;
 	if (options.rhosts_rsa_authentication)
 		auth_mask |= 1 << SSH_AUTH_RHOSTS_RSA;
 	if (options.rsa_authentication)
 		auth_mask |= 1 << SSH_AUTH_RSA;
-#if defined(KRB4) || defined(KRB5)
-	if (options.kerberos_authentication)
-		auth_mask |= 1 << SSH_AUTH_KERBEROS;
-#endif
-#if defined(AFS) || defined(KRB5)
-	if (options.kerberos_tgt_passing)
-		auth_mask |= 1 << SSH_PASS_KERBEROS_TGT;
-#endif
-#ifdef AFS
-	if (options.afs_token_passing)
-		auth_mask |= 1 << SSH_PASS_AFS_TOKEN;
-#endif
 	if (options.challenge_response_authentication == 1)
 		auth_mask |= 1 << SSH_AUTH_TIS;
 	if (options.password_authentication)

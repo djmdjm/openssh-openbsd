@@ -34,12 +34,13 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: log.c,v 1.26 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: log.c,v 1.25.2.1 2003/09/16 20:50:43 brad Exp $");
 
 #include "log.h"
 #include "xmalloc.h"
 
 #include <syslog.h>
+#include <vis.h>
 
 static LogLevel log_level = SYSLOG_LEVEL_INFO;
 static int log_on_stderr = 1;
@@ -331,6 +332,7 @@ log_init(char *av0, LogLevel level, SyslogFacility facility, int on_stderr)
 void
 do_log(LogLevel level, const char *fmt, va_list args)
 {
+	struct syslog_data sdata = SYSLOG_DATA_INIT;
 	char msgbuf[MSGBUFSIZ];
 	char fmtbuf[MSGBUFSIZ];
 	char *txt = NULL;
@@ -379,11 +381,13 @@ do_log(LogLevel level, const char *fmt, va_list args)
 	} else {
 		vsnprintf(msgbuf, sizeof(msgbuf), fmt, args);
 	}
+	strnvis(fmtbuf, msgbuf, sizeof(fmtbuf), VIS_SAFE|VIS_OCTAL);
 	if (log_on_stderr) {
-		fprintf(stderr, "%s\r\n", msgbuf);
+		snprintf(msgbuf, sizeof msgbuf, "%s\r\n", fmtbuf);
+		write(STDERR_FILENO, msgbuf, strlen(msgbuf));
 	} else {
-		openlog(argv0 ? argv0 : __progname, LOG_PID, log_facility);
-		syslog(pri, "%.500s", msgbuf);
-		closelog();
+		openlog_r(argv0 ? argv0 : __progname, LOG_PID, log_facility, &sdata);
+		syslog_r(pri, &sdata, "%.500s", fmtbuf);
+		closelog_r(&sdata);
 	}
 }

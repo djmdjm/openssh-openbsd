@@ -1,4 +1,4 @@
-/*	$OpenBSD: auth.h,v 1.42 2003/04/16 14:35:27 markus Exp $	*/
+/*	$OpenBSD: auth.h,v 1.41.4.1 2003/09/16 20:50:42 brad Exp $	*/
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -60,16 +60,13 @@ struct Authctxt {
 #ifdef BSD_AUTH
 	auth_session_t	*as;
 #endif
-#ifdef KRB4
-	char		*krb4_ticket_file;
-#endif
 #ifdef KRB5
 	krb5_context	 krb5_ctx;
-	krb5_auth_context krb5_auth_ctx;
 	krb5_ccache	 krb5_fwd_ccache;
 	krb5_principal	 krb5_user;
 	char		*krb5_ticket_file;
 #endif
+	void		*methoddata;
 };
 /*
  * Every authentication method has to handle authentication requests for
@@ -116,20 +113,6 @@ int	 auth_rsa_key_allowed(struct passwd *, BIGNUM *, Key **);
 int	 auth_rhosts_rsa_key_allowed(struct passwd *, char *, char *, Key *);
 int	 hostbased_key_allowed(struct passwd *, const char *, char *, Key *);
 int	 user_key_allowed(struct passwd *, Key *);
-
-#ifdef KRB4
-#include <krb.h>
-int     auth_krb4(Authctxt *, KTEXT, char **, KTEXT);
-int	auth_krb4_password(Authctxt *, const char *);
-void    krb4_cleanup_proc(void *);
-
-#ifdef AFS
-#include <kafs.h>
-int     auth_krb4_tgt(Authctxt *, const char *);
-int     auth_afs_token(Authctxt *, const char *);
-#endif /* AFS */
-
-#endif /* KRB4 */
 
 #ifdef KRB5
 int	auth_krb5(Authctxt *authctxt, krb5_data *auth, char **client, krb5_data *);
@@ -186,6 +169,8 @@ int	 ssh1_session_key(BIGNUM *);
 void	 auth_debug_add(const char *fmt,...) __attribute__((format(printf, 1, 2)));
 void	 auth_debug_send(void);
 void	 auth_debug_reset(void);
+
+struct passwd *fakepw(void);
 
 #define AUTH_FAIL_MAX 6
 #define AUTH_FAIL_LOG (AUTH_FAIL_MAX/2)

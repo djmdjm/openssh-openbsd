@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth2-hostbased.c,v 1.3 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: auth2-hostbased.c,v 1.2.8.1 2003/09/16 20:50:42 brad Exp $");
 
 #include "ssh2.h"
 #include "xmalloc.h"
@@ -42,7 +42,7 @@ RCSID("$OpenBSD: auth2-hostbased.c,v 1.3 2003/04/08 20:21:28 itojun Exp $");
 /* import */
 extern ServerOptions options;
 extern u_char *session_id2;
-extern int session_id2_len;
+extern u_int session_id2_len;
 
 static int
 userauth_hostbased(Authctxt *authctxt)
@@ -136,7 +136,7 @@ hostbased_key_allowed(struct passwd *pw, const char *cuser, char *chost,
 	HostStatus host_status;
 	int len;
 
-	resolvedname = get_canonical_hostname(options.verify_reverse_mapping);
+	resolvedname = get_canonical_hostname(options.use_dns);
 	ipaddr = get_remote_ipaddr();
 
 	debug2("userauth_hostbased: chost %s resolvedname %s ipaddr %s",

@@ -14,7 +14,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth-rhosts.c,v 1.29 2003/04/08 20:21:28 itojun Exp $");
+RCSID("$OpenBSD: auth-rhosts.c,v 1.28.4.1 2003/09/16 20:50:42 brad Exp $");
 
 #include "packet.h"
 #include "uidswap.h"
@@ -68,7 +68,8 @@ check_rhosts_file(const char *filename, const char *hostname,
 		 * This should be safe because each buffer is as big as the
 		 * whole string, and thus cannot be overwritten.
 		 */
-		switch (sscanf(buf, "%s %s %s", hostbuf, userbuf, dummy)) {
+		switch (sscanf(buf, "%1023s %1023s %1023s", hostbuf, userbuf,
+		    dummy)) {
 		case 0:
 			auth_debug_add("Found empty line in %.100s.", filename);
 			continue;
@@ -155,7 +156,7 @@ auth_rhosts(struct passwd *pw, const char *client_user)
 {
 	const char *hostname, *ipaddr;
 
-	hostname = get_canonical_hostname(options.verify_reverse_mapping);
+	hostname = get_canonical_hostname(options.use_dns);
 	ipaddr = get_remote_ipaddr();
 	return auth_rhosts2(pw, client_user, hostname, ipaddr);
 }
