@@ -26,7 +26,7 @@
 #include "includes.h"
 #include "uuencode.h"
 
-RCSID("$OpenBSD: radix.c,v 1.20 2002/04/23 12:58:26 markus Exp $");
+RCSID("$OpenBSD: radix.c,v 1.17.2.1 2002/05/18 04:12:11 jason Exp $");
 
 #ifdef AFS
 #include <krb.h>

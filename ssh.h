@@ -1,4 +1,4 @@
-/*	$OpenBSD: ssh.h,v 1.69 2002/05/11 20:24:48 stevesk Exp $	*/
+/*	$OpenBSD: ssh.h,v 1.66.2.1 2002/05/18 04:12:11 jason Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

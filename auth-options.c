@@ -10,7 +10,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth-options.c,v 1.24 2002/05/13 20:44:58 markus Exp $");
+RCSID("$OpenBSD: auth-options.c,v 1.23.2.1 2002/05/18 04:12:10 jason Exp $");
 
 #include "packet.h"
 #include "xmalloc.h"
