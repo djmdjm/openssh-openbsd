@@ -1,7 +1,5 @@
-/*	$OpenBSD: util.c,v 1.4.2.2 2000/11/08 21:31:38 jason Exp $	*/
-
 /*
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Markus Friedl. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,72 +23,40 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: util.c,v 1.4.2.2 2000/11/08 21:31:38 jason Exp $");
+RCSID("$OpenBSD: auth-chall.c,v 1.5.2.1 2001/03/12 15:44:07 jason Exp $");
 
-#include "ssh.h"
+#include "auth.h"
 
-char *
-chop(char *s)
-{
-	char *t = s;
-	while (*t) {
-		if(*t == '\n' || *t == '\r') {
-			*t = '\0';
-			return s;
-		}
-		t++;
-	}
-	return s;
-
-}
-
-void
-set_nonblock(int fd)
-{
-	int val;
-	val = fcntl(fd, F_GETFL, 0);
-	if (val < 0) {
-		error("fcntl(%d, F_GETFL, 0): %s", fd, strerror(errno));
-		return;
-	}
-	if (val & O_NONBLOCK) {
-		debug("fd %d IS O_NONBLOCK", fd);
-		return;
-	}
-	debug("fd %d setting O_NONBLOCK", fd);
-	val |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, val) == -1)
-		if (errno != ENODEV)
-			error("fcntl(%d, F_SETFL, O_NONBLOCK): %s",
-			    fd, strerror(errno));
-}
-
-/* Characters considered whitespace in strsep calls. */
-#define WHITESPACE " \t\r\n"
+#ifdef SKEY
+#include <skey.h>
 
 char *
-strdelim(char **s)
+get_challenge(Authctxt *authctxt, char *devs)
 {
-	char *old;
-	int wspace = 0;
-
-	if (*s == NULL)
+	static char challenge[1024];
+	struct skey skey;
+	if (skeychallenge(&skey, authctxt->user, challenge) == -1)
 		return NULL;
-
-	old = *s;
-
-	*s = strpbrk(*s, WHITESPACE "=");
-	if (*s == NULL)
-		return (old);
-
-	/* Allow only one '=' to be skipped */
-	if (*s[0] == '=')
-		wspace = 1;
-	*s[0] = '\0';
-
-	*s += strspn(*s + 1, WHITESPACE) + 1;
-	if (*s[0] == '=' && !wspace)
-		*s += strspn(*s + 1, WHITESPACE) + 1;
-
-	return (old);
+	strlcat(challenge, "\nS/Key Password: ", sizeof challenge);
+	return challenge;
 }
+int
+verify_response(Authctxt *authctxt, char *response)
+{
+	return (authctxt->valid &&
+	    skey_haskey(authctxt->pw->pw_name) == 0 &&
+	    skey_passcheck(authctxt->pw->pw_name, response) != -1);
+}
+#else
+/* not available */
+char *
+get_challenge(Authctxt *authctxt, char *devs)
+{
+	return NULL;
+}
+int
+verify_response(Authctxt *authctxt, char *response)
+{
+	return 0;
+}
+#endif

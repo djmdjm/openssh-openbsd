@@ -1,3 +1,5 @@
+/*	$OpenBSD: ssh-rsa.h,v 1.3.4.1 2001/03/12 15:44:16 jason Exp $	*/
+
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -21,34 +23,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef SSH_RSA_H
+#define SSH_RSA_H
 
-#include "includes.h"
-RCSID("$OpenBSD: hmac.c,v 1.2.2.2 2000/11/08 21:30:47 jason Exp $");
+int
+ssh_rsa_sign(
+    Key *key,
+    u_char **sigp, int *lenp,
+    u_char *data, int datalen);
 
-#include "xmalloc.h"
-#include "ssh.h"
-#include "getput.h"
+int
+ssh_rsa_verify(
+    Key *key,
+    u_char *signature, int signaturelen,
+    u_char *data, int datalen);
 
-#include <openssl/hmac.h>
-
-unsigned char *
-hmac(
-    EVP_MD *evp_md,
-    unsigned int seqno,
-    unsigned char *data, int datalen,
-    unsigned char *key, int keylen)
-{
-	HMAC_CTX c;
-	static unsigned char m[EVP_MAX_MD_SIZE];
-	unsigned char b[4];
-
-	if (key == NULL)
-		fatal("hmac: no key");
-	HMAC_Init(&c, key, keylen, evp_md);
-	PUT_32BIT(b, seqno);
-	HMAC_Update(&c, b, sizeof b);
-	HMAC_Update(&c, data, datalen);
-	HMAC_Final(&c, m, NULL);
-	HMAC_cleanup(&c);
-	return(m);
-}
+#endif
