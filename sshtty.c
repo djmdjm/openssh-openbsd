@@ -1,5 +1,4 @@
-/*	$OpenBSD: clientloop.h,v 1.4.2.4 2001/05/07 21:09:28 jason Exp $	*/
-
+/* $OpenBSD: sshtty.c,v 1.1.4.1 2001/05/07 21:09:38 jason Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -13,6 +12,7 @@
  */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Kevin Steves.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,5 +35,62 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* Client side main loop for the interactive session. */
-int     client_loop(int have_pty, int escape_char, int id);
+#include "includes.h"
+
+#include "sshtty.h"
+#include "log.h"
+
+static struct termios _saved_tio;
+static int _in_raw_mode = 0;
+
+int
+in_raw_mode(void)
+{
+	return _in_raw_mode;	
+}
+
+struct termios
+get_saved_tio(void)
+{
+	return _saved_tio;
+}
+
+void
+leave_raw_mode(void)
+{
+	if (!_in_raw_mode)
+		return;
+	if (tcsetattr(fileno(stdin), TCSADRAIN, &_saved_tio) == -1)
+		perror("tcsetattr");
+	else
+		_in_raw_mode = 0;
+
+	fatal_remove_cleanup((void (*) (void *)) leave_raw_mode, NULL);
+}
+
+void
+enter_raw_mode(void)
+{
+	struct termios tio;
+
+	if (tcgetattr(fileno(stdin), &tio) == -1) {
+		perror("tcgetattr");
+		return;
+	}
+	_saved_tio = tio;
+	tio.c_iflag |= IGNPAR;
+	tio.c_iflag &= ~(ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXANY | IXOFF);
+	tio.c_lflag &= ~(ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
+#ifdef IEXTEN
+	tio.c_lflag &= ~IEXTEN;
+#endif
+	tio.c_oflag &= ~OPOST;
+	tio.c_cc[VMIN] = 1;
+	tio.c_cc[VTIME] = 0;
+	if (tcsetattr(fileno(stdin), TCSADRAIN, &tio) == -1)
+		perror("tcsetattr");
+	else
+		_in_raw_mode = 1;
+
+	fatal_add_cleanup((void (*) (void *)) leave_raw_mode, NULL);
+}

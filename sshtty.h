@@ -1,6 +1,18 @@
+/* $OpenBSD: sshtty.h,v 1.1.4.1 2001/05/07 21:09:38 jason Exp $ */
 /*
- * Copyright (c) 1995,1999 Theo de Raadt.  All rights reserved.
- * All rights reserved.
+ * Author: Tatu Ylonen <ylo@cs.hut.fi>
+ * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+ *                    All rights reserved
+ *
+ * As far as I am concerned, the code I have written for this software
+ * can be used freely for any purpose.  Any derived versions of this
+ * software must be clearly marked as such, and if the derived work is
+ * incompatible with the protocol description in the RFC file, it must be
+ * called by a name other than "ssh" or "Secure Shell".
+ */
+/*
+ * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Kevin Steves.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +35,31 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "includes.h"
-RCSID("$OpenBSD: atomicio.c,v 1.7.2.4 2001/05/07 21:09:25 jason Exp $");
+#ifndef SSHTTY_H
+#define SSHTTY_H
 
-#include "xmalloc.h"
-#include "atomicio.h"
+#include <termios.h>
 
 /*
- * ensure all of data on socket comes through. f==read || f==write
+ * Accessor function indicating whether we are in raw mode.  Set by
+ * enter_raw_mode() and leave_raw_mode().
  */
-ssize_t
-atomicio(f, fd, _s, n)
-	ssize_t (*f) ();
-	int fd;
-	void *_s;
-	size_t n;
-{
-	char *s = _s;
-	ssize_t res, pos = 0;
+int in_raw_mode(void);
 
-	while (n > pos) {
-		res = (f) (fd, s + pos, n - pos);
-		switch (res) {
-		case -1:
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-		case 0:
-			return (res);
-		default:
-			pos += res;
-		}
-	}
-	return (pos);
-}
+/*
+ * Return terminal modes, as saved by enter_raw_mode().
+ */
+struct termios get_saved_tio(void);
+
+/*
+ * Returns the user's terminal to normal mode if it had been
+ * put in raw mode.
+ */
+void leave_raw_mode(void);
+
+/*
+ * Puts the user's terminal in raw mode.
+ */
+void enter_raw_mode(void);
+
+#endif
