@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include "includes.h"
-RCSID("$OpenBSD: cipher-ctr.c,v 1.4 2004/02/06 23:41:13 dtucker Exp $");
+RCSID("$OpenBSD: cipher-ctr.c,v 1.2.2.1 2004/02/28 03:51:33 brad Exp $");
 
 #include <openssl/evp.h>
 

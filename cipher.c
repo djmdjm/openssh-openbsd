@@ -35,7 +35,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: cipher.c,v 1.68 2004/01/23 19:26:33 hshoexer Exp $");
+RCSID("$OpenBSD: cipher.c,v 1.65.2.1 2004/02/28 03:51:33 brad Exp $");
 
 #include "xmalloc.h"
 #include "log.h"
@@ -52,6 +52,7 @@ extern const EVP_CIPHER *evp_ssh1_3des(void);
 extern void ssh1_3des_iv(EVP_CIPHER_CTX *, int, u_char *, int);
 extern const EVP_CIPHER *evp_aes_128_ctr(void);
 extern void ssh_aes_ctr_iv(EVP_CIPHER_CTX *, int, u_char *, u_int);
+#define EVP_acss NULL
 
 struct Cipher {
 	char	*name;

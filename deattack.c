@@ -18,7 +18,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: deattack.c,v 1.19 2003/09/18 08:49:45 markus Exp $");
+RCSID("$OpenBSD: deattack.c,v 1.18.8.1 2004/02/28 03:51:33 brad Exp $");
 
 #include "deattack.h"
 #include "log.h"

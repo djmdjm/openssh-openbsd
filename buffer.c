@@ -12,7 +12,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: buffer.c,v 1.21 2003/11/21 11:57:03 djm Exp $");
+RCSID("$OpenBSD: buffer.c,v 1.18.2.1 2004/02/28 03:51:32 brad Exp $");
 
 #include "xmalloc.h"
 #include "buffer.h"

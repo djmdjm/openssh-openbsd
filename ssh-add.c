@@ -35,7 +35,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: ssh-add.c,v 1.69 2003/11/21 11:57:03 djm Exp $");
+RCSID("$OpenBSD: ssh-add.c,v 1.68.2.1 2004/02/28 03:51:34 brad Exp $");
 
 #include <openssl/evp.h>
 

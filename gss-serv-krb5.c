@@ -1,4 +1,4 @@
-/*	$OpenBSD: gss-serv-krb5.c,v 1.2 2003/11/21 11:57:03 djm Exp $	*/
+/*	$OpenBSD: gss-serv-krb5.c,v 1.1.2.1 2004/02/28 03:51:33 brad Exp $	*/
 
 /*
  * Copyright (c) 2001-2003 Simon Wilkinson. All rights reserved.

@@ -1,4 +1,4 @@
-/*	$OpenBSD: hostfile.h,v 1.14 2003/11/10 16:23:41 jakob Exp $	*/
+/*	$OpenBSD: hostfile.h,v 1.13.4.1 2004/02/28 03:51:33 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

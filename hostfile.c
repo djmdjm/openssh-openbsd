@@ -36,7 +36,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: hostfile.c,v 1.32 2003/11/10 16:23:41 jakob Exp $");
+RCSID("$OpenBSD: hostfile.c,v 1.31.2.1 2004/02/28 03:51:33 brad Exp $");
 
 #include "packet.h"
 #include "match.h"

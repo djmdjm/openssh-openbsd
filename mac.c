@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: mac.c,v 1.6 2003/09/18 13:02:21 miod Exp $");
+RCSID("$OpenBSD: mac.c,v 1.5.6.1 2004/02/28 03:51:33 brad Exp $");
 
 #include <openssl/hmac.h>
 

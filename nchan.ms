@@ -1,4 +1,4 @@
-.\"	$OpenBSD: nchan.ms,v 1.8 2003/11/21 11:57:03 djm Exp $
+.\"	$OpenBSD: nchan.ms,v 1.7.12.1 2004/02/28 03:51:33 brad Exp $
 .\"
 .\"
 .\" Copyright (c) 1999 Markus Friedl.  All rights reserved.

@@ -1,4 +1,4 @@
-/*	$OpenBSD: pathnames.h,v 1.14 2004/01/30 09:48:57 markus Exp $	*/
+/*	$OpenBSD: pathnames.h,v 1.13.6.1 2004/02/28 03:51:33 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

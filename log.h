@@ -1,4 +1,4 @@
-/*	$OpenBSD: log.h,v 1.10 2003/09/23 20:17:11 markus Exp $	*/
+/*	$OpenBSD: log.h,v 1.9.2.1 2004/02/28 03:51:33 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -34,7 +34,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: log.c,v 1.29 2003/09/23 20:17:11 markus Exp $");
+RCSID("$OpenBSD: log.c,v 1.28.2.1 2004/02/28 03:51:33 brad Exp $");
 
 #include "log.h"
 #include "xmalloc.h"
