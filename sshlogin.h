@@ -1,4 +1,4 @@
-/*	$OpenBSD: login.h,v 1.3.2.1 2001/03/12 15:44:11 jason Exp $	*/
+/*	$OpenBSD: sshlogin.h,v 1.1.2.1 2001/03/21 18:53:18 jason Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -11,8 +11,8 @@
  * incompatible with the protocol description in the RFC file, it must be
  * called by a name other than "ssh" or "Secure Shell".
  */
-#ifndef LOGIN_H
-#define LOGIN_H
+#ifndef SSHLOGIN_H
+#define SSHLOGIN_H
 
 /*
  * Returns the time when the user last logged in.  Returns 0 if the
