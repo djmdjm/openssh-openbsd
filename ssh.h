@@ -10,7 +10,7 @@
  * called by a name other than "ssh" or "Secure Shell".
  */
 
-/* RCSID("$OpenBSD: ssh.h,v 1.63 2001/05/24 18:57:53 stevesk Exp $"); */
+/* RCSID("$OpenBSD: ssh.h,v 1.62.2.1 2001/09/27 19:03:55 jason Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H

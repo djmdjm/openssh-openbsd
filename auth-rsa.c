@@ -14,7 +14,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth-rsa.c,v 1.41 2001/05/20 17:20:35 markus Exp $");
+RCSID("$OpenBSD: auth-rsa.c,v 1.40.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include <openssl/rsa.h>
 #include <openssl/md5.h>
@@ -159,7 +159,7 @@ auth_rsa(struct passwd *pw, BIGNUM *client_n)
 		return 0;
 	}
 	if (options.strict_modes &&
-	    secure_filename(f, file, pw->pw_uid, line, sizeof(line)) != 0) {
+	    secure_filename(f, file, pw, line, sizeof(line)) != 0) {
 		xfree(file);
 		fclose(f);
 		log("Authentication refused: %s", line);
@@ -211,9 +211,7 @@ auth_rsa(struct passwd *pw, BIGNUM *client_n)
 
 		/* Parse the key from the line. */
 		if (!auth_rsa_read_key(&cp, &bits, pk->e, pk->n)) {
-			debug("%.100s, line %lu: bad key syntax",
-			    file, linenum);
-			packet_send_debug("%.100s, line %lu: bad key syntax",
+			debug("%.100s, line %lu: non ssh1 key syntax",
 			    file, linenum);
 			continue;
 		}
@@ -225,7 +223,7 @@ auth_rsa(struct passwd *pw, BIGNUM *client_n)
 
 		/* check the real bits  */
 		if (bits != BN_num_bits(pk->n))
-			log("Warning: %s, line %ld: keysize mismatch: "
+			log("Warning: %s, line %lu: keysize mismatch: "
 			    "actual %d vs. announced %d.",
 			    file, linenum, BN_num_bits(pk->n), bits);
 

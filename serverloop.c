@@ -11,7 +11,7 @@
  * called by a name other than "ssh" or "Secure Shell".
  *
  * SSH2 support by Markus Friedl.
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: serverloop.c,v 1.68 2001/06/04 23:07:20 markus Exp $");
+RCSID("$OpenBSD: serverloop.c,v 1.61.2.1 2001/09/27 19:03:55 jason Exp $");
 
 #include "xmalloc.h"
 #include "packet.h"
@@ -59,6 +59,7 @@ extern ServerOptions options;
 
 /* XXX */
 extern Kex *xxx_kex;
+static Authctxt *xxx_authctxt;
 
 static Buffer stdin_buffer;	/* Buffer for stdin data. */
 static Buffer stdout_buffer;	/* Buffer for stdout data. */
@@ -84,13 +85,15 @@ static u_int buffer_high;	/* "Soft" max buffer size. */
  * This SIGCHLD kludge is used to detect when the child exits.  The server
  * will exit after that, as soon as forwarded connections have terminated.
  */
+
 static volatile int child_terminated;	/* The child has terminated. */
 
-void	server_init_dispatch(void);
+/* prototypes */
+static void server_init_dispatch(void);
 
 int client_alive_timeouts = 0;
 
-void
+static void
 sigchld_handler(int sig)
 {
 	int save_errno = errno;
@@ -104,7 +107,7 @@ sigchld_handler(int sig)
  * Make packets from buffered stderr data, and buffer it for sending
  * to the client.
  */
-void
+static void
 make_packets_from_stderr_data(void)
 {
 	int len;
@@ -133,7 +136,7 @@ make_packets_from_stderr_data(void)
  * Make packets from buffered stdout data, and buffer it for sending to the
  * client.
  */
-void
+static void
 make_packets_from_stdout_data(void)
 {
 	int len;
@@ -164,9 +167,9 @@ make_packets_from_stdout_data(void)
  * have data or can accept data.  Optionally, a maximum time can be specified
  * for the duration of the wait (0 = infinite).
  */
-void
+static void
 wait_until_can_do_something(fd_set **readsetp, fd_set **writesetp, int *maxfdp,
-    u_int max_time_milliseconds)
+    int *nallocp, u_int max_time_milliseconds)
 {
 	struct timeval tv, *tvp;
 	int ret;
@@ -180,17 +183,17 @@ wait_until_can_do_something(fd_set **readsetp, fd_set **writesetp, int *maxfdp,
 	 * this could be randomized somewhat to make traffic
 	 * analysis more difficult, but we're not doing it yet.  
 	 */
-	if (max_time_milliseconds == 0 && options.client_alive_interval) {
+	if (compat20 &&
+	    max_time_milliseconds == 0 && options.client_alive_interval) {
 		client_alive_scheduled = 1;
 		max_time_milliseconds = options.client_alive_interval * 1000;
-	} else 
-		client_alive_scheduled = 0;
+	}
 
 	/* When select fails we restart from here. */
 retry_select:
 
 	/* Allocate and update select() masks for channel descriptors. */
-	channel_prepare_select(readsetp, writesetp, maxfdp, 0);
+	channel_prepare_select(readsetp, writesetp, maxfdp, nallocp, 0);
 
 	if (compat20) {
 		/* wrong: bad condition XXX */
@@ -286,7 +289,7 @@ retry_select:
  * Processes input from the client and the program.  Input data is stored
  * in buffers and processed later.
  */
-void
+static void
 process_input(fd_set * readset)
 {
 	int len;
@@ -342,16 +345,19 @@ process_input(fd_set * readset)
 /*
  * Sends data from internal buffers to client program stdin.
  */
-void
+static void
 process_output(fd_set * writeset)
 {
 	struct termios tio;
+	u_char *data;
+	u_int dlen;
 	int len;
 
 	/* Write buffered data to program stdin. */
 	if (!compat20 && fdin != -1 && FD_ISSET(fdin, writeset)) {
-		len = write(fdin, buffer_ptr(&stdin_buffer),
-		    buffer_len(&stdin_buffer));
+		data = buffer_ptr(&stdin_buffer);
+		dlen = buffer_len(&stdin_buffer);
+		len = write(fdin, data, dlen);
 		if (len < 0 && (errno == EINTR || errno == EAGAIN)) {
 			/* do nothing */
 		} else if (len <= 0) {
@@ -366,7 +372,8 @@ process_output(fd_set * writeset)
 			fdin = -1;
 		} else {
 			/* Successful write. */
-			if (fdin_is_tty && tcgetattr(fdin, &tio) == 0 &&
+			if (fdin_is_tty && dlen >= 1 && data[0] != '\r' &&
+			    tcgetattr(fdin, &tio) == 0 &&
 			    !(tio.c_lflag & ECHO) && (tio.c_lflag & ICANON)) {
 				/*
 				 * Simulate echo to reduce the impact of
@@ -390,7 +397,7 @@ process_output(fd_set * writeset)
  * Wait until all buffered output has been sent to the client.
  * This is used when the program terminates.
  */
-void
+static void
 drain_output(void)
 {
 	/* Send any buffered stdout data to the client. */
@@ -415,7 +422,7 @@ drain_output(void)
 	packet_write_wait();
 }
 
-void
+static void
 process_buffered_input_packets(void)
 {
 	dispatch_run(DISPATCH_NONBLOCK, NULL, compat20 ? xxx_kex : NULL);
@@ -432,7 +439,7 @@ void
 server_loop(pid_t pid, int fdin_arg, int fdout_arg, int fderr_arg)
 {
 	fd_set *readset = NULL, *writeset = NULL;
-	int max_fd;
+	int max_fd = 0, nalloc = 0;
 	int wait_status;	/* Status returned by wait(). */
 	pid_t wait_pid;		/* pid returned by wait(). */
 	int waiting_termination = 0;	/* Have displayed waiting close message. */
@@ -473,12 +480,14 @@ server_loop(pid_t pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	else
 		buffer_high = 64 * 1024;
 
+#if 0
 	/* Initialize max_fd to the maximum of the known file descriptors. */
-	max_fd = MAX(fdin, fdout);
+	max_fd = MAX(connection_in, connection_out);
+	max_fd = MAX(max_fd, fdin);
+	max_fd = MAX(max_fd, fdout);
 	if (fderr != -1)
 		max_fd = MAX(max_fd, fderr);
-	max_fd = MAX(max_fd, connection_in);
-	max_fd = MAX(max_fd, connection_out);
+#endif
 
 	/* Initialize Initialize buffers. */
 	buffer_init(&stdin_buffer);
@@ -564,9 +573,14 @@ server_loop(pid_t pid, int fdin_arg, int fdout_arg, int fderr_arg)
 				xfree(cp);
 			}
 		}
+		max_fd = MAX(connection_in, connection_out);
+		max_fd = MAX(max_fd, fdin);
+		max_fd = MAX(max_fd, fdout);
+		max_fd = MAX(max_fd, fderr);
+
 		/* Sleep in select() until we can do something. */
 		wait_until_can_do_something(&readset, &writeset, &max_fd,
-		    max_time_milliseconds);
+		    &nalloc, max_time_milliseconds);
 
 		/* Process any channel events. */
 		channel_after_select(readset, writeset);
@@ -608,8 +622,7 @@ server_loop(pid_t pid, int fdin_arg, int fdout_arg, int fderr_arg)
 		close(fdin);
 	fdin = -1;
 
-	/* Stop listening for channels; this removes unix domain sockets. */
-	channel_stop_listening();
+	channel_free_all();
 
 	/* We no longer want our SIGCHLD handler to be called. */
 	signal(SIGCHLD, SIG_DFL);
@@ -657,10 +670,10 @@ server_loop(pid_t pid, int fdin_arg, int fdout_arg, int fderr_arg)
 }
 
 void
-server_loop2(void)
+server_loop2(Authctxt *authctxt)
 {
 	fd_set *readset = NULL, *writeset = NULL;
-	int rekeying = 0, max_fd, status;
+	int rekeying = 0, max_fd, status, nalloc = 0;
 	pid_t pid;
 
 	debug("Entering interactive session for SSH2.");
@@ -671,6 +684,7 @@ server_loop2(void)
 	connection_out = packet_get_connection_out();
 
 	max_fd = MAX(connection_in, connection_out);
+	xxx_authctxt = authctxt;
 
 	server_init_dispatch();
 
@@ -682,7 +696,7 @@ server_loop2(void)
 		if (!rekeying && packet_not_very_much_data_to_write())
 			channel_output_poll();
 		wait_until_can_do_something(&readset, &writeset, &max_fd,
-		    rekeying);
+		    &nalloc, 0);
 		if (child_terminated) {
 			while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
 				session_close_by_pid(pid, status);
@@ -701,12 +715,29 @@ server_loop2(void)
 		xfree(writeset);
 
 	signal(SIGCHLD, SIG_DFL);
+
 	while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
 		session_close_by_pid(pid, status);
+	/*
+	 * there is a race between channel_free_all() killing children and
+	 * children dying before kill()
+	 */
+	channel_detach_all();
 	channel_stop_listening();
+
+	while (session_have_children()) {
+		pid = waitpid(-1, &status, 0);
+		if (pid > 0)
+			session_close_by_pid(pid, status);
+		else {
+			error("waitpid returned %d: %s", pid, strerror(errno));
+			break;
+		}
+	}
+	channel_free_all();
 }
 
-void
+static void
 server_input_channel_failure(int type, int plen, void *ctxt)
 {
 	debug("Got CHANNEL_FAILURE for keepalive");
@@ -719,7 +750,7 @@ server_input_channel_failure(int type, int plen, void *ctxt)
 }
 
 
-void
+static void
 server_input_stdin_data(int type, int plen, void *ctxt)
 {
 	char *data;
@@ -736,7 +767,7 @@ server_input_stdin_data(int type, int plen, void *ctxt)
 	xfree(data);
 }
 
-void
+static void
 server_input_eof(int type, int plen, void *ctxt)
 {
 	/*
@@ -749,7 +780,7 @@ server_input_eof(int type, int plen, void *ctxt)
 	stdin_eof = 1;
 }
 
-void
+static void
 server_input_window_size(int type, int plen, void *ctxt)
 {
 	int row = packet_get_int();
@@ -763,7 +794,7 @@ server_input_window_size(int type, int plen, void *ctxt)
 		pty_change_window_size(fdin, row, col, xpixel, ypixel);
 }
 
-Channel *
+static Channel *
 server_request_direct_tcpip(char *ctype)
 {
 	Channel *c;
@@ -796,7 +827,7 @@ server_request_direct_tcpip(char *ctype)
 	return c;
 }
 
-Channel *
+static Channel *
 server_request_session(char *ctype)
 {
 	Channel *c;
@@ -816,7 +847,7 @@ server_request_session(char *ctype)
 		error("server_request_session: channel_new failed");
 		return NULL;
 	}
-	if (session_open(c->self) != 1) {
+	if (session_open(xxx_authctxt, c->self) != 1) {
 		debug("session open failed, free channel %d", c->self);
 		channel_free(c);
 		return NULL;
@@ -827,7 +858,7 @@ server_request_session(char *ctype)
 	return c;
 }
 
-void
+static void
 server_input_channel_open(int type, int plen, void *ctxt)
 {
 	Channel *c = NULL;
@@ -877,7 +908,7 @@ server_input_channel_open(int type, int plen, void *ctxt)
 	xfree(ctype);
 }
 
-void
+static void
 server_input_global_request(int type, int plen, void *ctxt)
 {
 	char *rtype;
@@ -927,7 +958,7 @@ server_input_global_request(int type, int plen, void *ctxt)
 	xfree(rtype);
 }
 
-void
+static void
 server_init_dispatch_20(void)
 {
 	debug("server_init_dispatch_20");
@@ -947,7 +978,7 @@ server_init_dispatch_20(void)
 	/* rekeying */
 	dispatch_set(SSH2_MSG_KEXINIT, &kex_input_kexinit);
 }
-void
+static void
 server_init_dispatch_13(void)
 {
 	debug("server_init_dispatch_13");
@@ -962,7 +993,7 @@ server_init_dispatch_13(void)
 	dispatch_set(SSH_MSG_CHANNEL_OPEN_FAILURE, &channel_input_open_failure);
 	dispatch_set(SSH_MSG_PORT_OPEN, &channel_input_port_open);
 }
-void
+static void
 server_init_dispatch_15(void)
 {
 	server_init_dispatch_13();
@@ -970,7 +1001,7 @@ server_init_dispatch_15(void)
 	dispatch_set(SSH_MSG_CHANNEL_CLOSE, &channel_input_ieof);
 	dispatch_set(SSH_MSG_CHANNEL_CLOSE_CONFIRMATION, &channel_input_oclose);
 }
-void
+static void
 server_init_dispatch(void)
 {
 	if (compat20)
@@ -980,4 +1011,3 @@ server_init_dispatch(void)
 	else
 		server_init_dispatch_15();
 }
-

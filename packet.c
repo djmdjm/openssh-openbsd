@@ -13,7 +13,7 @@
  *
  *
  * SSH2 packet format added by Markus Friedl.
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: packet.c,v 1.66 2001/06/12 16:11:26 markus Exp $");
+RCSID("$OpenBSD: packet.c,v 1.61.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include "xmalloc.h"
 #include "buffer.h"
@@ -260,8 +260,8 @@ packet_get_protocol_flags()
  * Level is compression level 1 (fastest) - 9 (slow, best) as in gzip.
  */
 
-void
-packet_init_compression()
+static void
+packet_init_compression(void)
 {
 	if (compression_buffer_ready == 1)
 		return;
@@ -356,7 +356,7 @@ packet_put_bignum2(BIGNUM * value)
  * encrypts the packet before sending.
  */
 
-void
+static void
 packet_send1(void)
 {
 	char buf[8], *cp;
@@ -427,7 +427,7 @@ packet_send1(void)
 	 */
 }
 
-void
+static void
 set_newkeys(int mode)
 {
 	Enc *enc;
@@ -480,7 +480,7 @@ set_newkeys(int mode)
 /*
  * Finalize packet in SSH2 format (compress, mac, encrypt, enqueue)
  */
-void
+static void
 packet_send2(void)
 {
 	static u_int32_t seqnr = 0;
@@ -683,7 +683,7 @@ packet_read_expect(int *payload_len_ptr, int expected_type)
  * 	Check bytes
  */
 
-int
+static int
 packet_read_poll1(int *payload_len_ptr)
 {
 	u_int len, padded_len;
@@ -761,7 +761,7 @@ packet_read_poll1(int *payload_len_ptr)
 	return type;
 }
 
-int
+static int
 packet_read_poll2(int *payload_len_ptr)
 {
 	static u_int32_t seqnr = 0;
@@ -1085,7 +1085,7 @@ packet_disconnect(const char *fmt,...)
 	packet_write_wait();
 
 	/* Stop listening for connections. */
-	channel_stop_listening();
+	channel_close_all();
 
 	/* Close the connection. */
 	packet_close();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999 Markus Friedl.  All rights reserved.
+ * Copyright (c) 1999, 2000, 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: nchan.c,v 1.28 2001/05/31 10:30:16 markus Exp $");
+RCSID("$OpenBSD: nchan.c,v 1.23.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include "ssh1.h"
 #include "ssh2.h"
@@ -74,14 +74,14 @@ chan_event_fn *chan_obuf_empty			= NULL;
 /*
  * ACTIONS: should never update the channel states
  */
-static void	chan_send_ieof1(Channel *c);
-static void	chan_send_oclose1(Channel *c);
-static void	chan_send_close2(Channel *c);
-static void	chan_send_eof2(Channel *c);
+static void	chan_send_ieof1(Channel *);
+static void	chan_send_oclose1(Channel *);
+static void	chan_send_close2(Channel *);
+static void	chan_send_eof2(Channel *);
 
 /* helper */
-static void	chan_shutdown_write(Channel *c);
-static void	chan_shutdown_read(Channel *c);
+static void	chan_shutdown_write(Channel *);
+static void	chan_shutdown_read(Channel *);
 
 /*
  * SSH1 specific implementation of event functions
@@ -518,11 +518,10 @@ chan_shutdown_write(Channel *c)
 			    "shutdown() failed for fd%d: %.100s",
 			    c->self, c->sock, strerror(errno));
 	} else {
-		if (close(c->wfd) < 0)
+		if (channel_close_fd(&c->wfd) < 0)
 			log("channel %d: chan_shutdown_write: "
 			    "close() failed for fd%d: %.100s",
 			    c->self, c->wfd, strerror(errno));
-		c->wfd = -1;
 	}
 }
 static void
@@ -538,10 +537,9 @@ chan_shutdown_read(Channel *c)
 			    c->self, c->sock, c->istate, c->ostate,
 			    strerror(errno));
 	} else {
-		if (close(c->rfd) < 0)
+		if (channel_close_fd(&c->rfd) < 0)
 			log("channel %d: chan_shutdown_read: "
 			    "close() failed for fd%d: %.100s",
 			    c->self, c->rfd, strerror(errno));
-		c->rfd = -1;
 	}
 }

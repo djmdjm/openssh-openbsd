@@ -1,4 +1,4 @@
-/*	$OpenBSD: misc.c,v 1.9 2001/05/19 19:43:57 stevesk Exp $	*/
+/*	$OpenBSD: misc.c,v 1.5.2.1 2001/09/27 19:03:54 jason Exp $	*/
 
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
@@ -25,12 +25,13 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: misc.c,v 1.9 2001/05/19 19:43:57 stevesk Exp $");
+RCSID("$OpenBSD: misc.c,v 1.5.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include "misc.h"
 #include "log.h"
 #include "xmalloc.h"
 
+/* remove newline at end of string */
 char *
 chop(char *s)
 {
@@ -46,6 +47,7 @@ chop(char *s)
 
 }
 
+/* set/unset filedescriptor to non-blocking */
 void
 set_nonblock(int fd)
 {
@@ -82,7 +84,7 @@ unset_nonblock(int fd)
 		debug2("fd %d is not O_NONBLOCK", fd);
 		return;
 	}
-	debug("fd %d setting O_NONBLOCK", fd);
+	debug("fd %d clearing O_NONBLOCK", fd);
 	val &= ~O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, val) == -1)
 		if (errno != ENODEV)
@@ -93,6 +95,7 @@ unset_nonblock(int fd)
 /* Characters considered whitespace in strsep calls. */
 #define WHITESPACE " \t\r\n"
 
+/* return next token in configuration line */
 char *
 strdelim(char **s)
 {
@@ -131,13 +134,21 @@ pwcopy(struct passwd *pw)
 	copy->pw_gecos = xstrdup(pw->pw_gecos);
 	copy->pw_uid = pw->pw_uid;
 	copy->pw_gid = pw->pw_gid;
+	copy->pw_expire = pw->pw_expire;
+	copy->pw_change = pw->pw_change;
 	copy->pw_class = xstrdup(pw->pw_class);
 	copy->pw_dir = xstrdup(pw->pw_dir);
 	copy->pw_shell = xstrdup(pw->pw_shell);
 	return copy;
 }
 
-int a2port(const char *s)
+/*
+ * Convert ASCII string to TCP/IP port number.
+ * Port must be >0 and <=65535.
+ * Return 0 if invalid.
+ */
+int
+a2port(const char *s)
 {
 	long port;
 	char *endp;
@@ -158,7 +169,29 @@ int a2port(const char *s)
 #define DAYS		(HOURS * 24)
 #define WEEKS		(DAYS * 7)
 
-long convtime(const char *s)
+/*
+ * Convert a time string into seconds; format is
+ * a sequence of:
+ *      time[qualifier]
+ *
+ * Valid time qualifiers are:
+ *      <none>  seconds
+ *      s|S     seconds
+ *      m|M     minutes
+ *      h|H     hours
+ *      d|D     days
+ *      w|W     weeks
+ *
+ * Examples:
+ *      90m     90 minutes
+ *      1h30m   90 minutes
+ *      2d      2 days
+ *      1w      1 week
+ *
+ * Return -1 if time string is invalid.
+ */
+long
+convtime(const char *s)
 {
 	long total, secs;
 	const char *p;
@@ -245,6 +278,7 @@ colon(char *cp)
 	return (0);
 }
 
+/* function to assist building execv() arguments */
 void
 addargs(arglist *args, char *fmt, ...)
 {

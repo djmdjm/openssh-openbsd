@@ -36,7 +36,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: authfile.c,v 1.36 2001/06/07 20:23:03 markus Exp $");
+RCSID("$OpenBSD: authfile.c,v 1.32.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -62,7 +62,7 @@ static const char authfile_id_string[] =
  * passphrase.
  */
 
-int
+static int
 key_save_private_rsa1(Key *key, const char *filename, const char *passphrase,
     const char *comment)
 {
@@ -159,7 +159,7 @@ key_save_private_rsa1(Key *key, const char *filename, const char *passphrase,
 }
 
 /* save SSH v2 key in OpenSSL PEM format */
-int
+static int
 key_save_private_pem(Key *key, const char *filename, const char *_passphrase,
     const char *comment)
 {
@@ -226,7 +226,7 @@ key_save_private(Key *key, const char *filename, const char *passphrase,
  * otherwise.
  */
 
-Key *
+static Key *
 key_load_public_rsa1(int fd, const char *filename, char **commentp)
 {
 	Buffer buffer;
@@ -306,7 +306,7 @@ key_load_public_type(int type, const char *filename, char **commentp)
  * Assumes we are called under uid of the owner of the file.
  */
 
-Key *
+static Key *
 key_load_private_rsa1(int fd, const char *filename, const char *passphrase,
     char **commentp)
 {
@@ -430,7 +430,7 @@ fail:
 	return NULL;
 }
 
-Key *
+static Key *
 key_load_private_pem(int fd, int type, const char *passphrase,
     char **commentp)
 {
@@ -481,20 +481,23 @@ key_load_private_pem(int fd, int type, const char *passphrase,
 	return prv;
 }
 
-int
+static int
 key_perm_ok(int fd, const char *filename)
 {
 	struct stat st;
 
-	/* check owner and modes */
-	if (fstat(fd, &st) < 0 ||
-	    (st.st_uid != 0 && getuid() != 0 && st.st_uid != getuid()) ||
-	    (st.st_mode & 077) != 0) {
-		close(fd);
+	if (fstat(fd, &st) < 0)
+		return 0;
+	/*
+	 * if a key owned by the user is accessed, then we check the
+	 * permissions of the file. if the key owned by a different user,
+	 * then we don't care.
+	 */
+	if ((st.st_uid == getuid()) && (st.st_mode & 077) != 0) {
 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		error("@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @");
 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-		error("Bad ownership or mode(0%3.3o) for '%s'.",
+		error("Permissions 0%3.3o for '%s' are too open.",
 		    st.st_mode & 0777, filename);
 		error("It is recommended that your private key files are NOT accessible by others.");
 		error("This private key will be ignored.");
@@ -568,7 +571,7 @@ key_load_private(const char *filename, const char *passphrase,
 	return prv;
 }
 
-int
+static int
 key_try_load_public(Key *k, const char *filename, char **commentp)
 {
 	FILE *f;

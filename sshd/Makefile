@@ -1,4 +1,4 @@
-#	$OpenBSD: Makefile,v 1.40 2001/05/29 22:23:58 millert Exp $
+#	$OpenBSD: Makefile,v 1.38.2.1 2001/09/27 19:03:56 jason Exp $
 
 .PATH:		${.CURDIR}/..
 
@@ -7,7 +7,8 @@ BINOWN=	root
 BINMODE=555
 BINDIR=	/usr/sbin
 MAN=	sshd.8
-CFLAGS+=-DHAVE_LOGIN_CAP -DBSD_AUTH
+CFLAGS+=-DHAVE_LOGIN_CAP
+#CFLAGS+=-DBSD_AUTH
 
 SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	sshpty.c sshlogin.c servconf.c serverloop.c \
@@ -16,6 +17,13 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	auth-skey.c auth-bsdauth.c
 
 .include <bsd.own.mk> # for KERBEROS and AFS
+
+.if (${KERBEROS5:L} == "yes")
+CFLAGS+=-DKRB5 -I${DESTDIR}/usr/include/kerberosV
+SRCS+=  auth-krb5.c
+LDADD+= -lkrb5 -lkafs -lasn1 -lcom_err
+DPADD+= ${LIBKRB5} ${LIBKAFS} ${LIBASN1}
+.endif # KERBEROS5
 
 .if (${KERBEROS:L} == "yes")
 .if (${AFS:L} == "yes")

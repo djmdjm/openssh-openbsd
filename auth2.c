@@ -23,7 +23,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth2.c,v 1.62 2001/06/07 19:57:53 markus Exp $");
+RCSID("$OpenBSD: auth2.c,v 1.56.2.1 2001/09/27 19:03:54 jason Exp $");
 
 #include <openssl/evp.h>
 
@@ -70,26 +70,23 @@ struct Authmethod {
 
 /* protocol */
 
-void	input_service_request(int type, int plen, void *ctxt);
-void	input_userauth_request(int type, int plen, void *ctxt);
-void	protocol_error(int type, int plen, void *ctxt);
+static void input_service_request(int, int, void *);
+static void input_userauth_request(int, int, void *);
+static void protocol_error(int, int, void *);
 
 /* helper */
-Authmethod	*authmethod_lookup(const char *name);
-char	*authmethods_get(void);
-int	user_key_allowed(struct passwd *pw, Key *key);
-int
-hostbased_key_allowed(struct passwd *pw, const char *cuser, char *chost,
-    Key *key);
+static Authmethod *authmethod_lookup(const char *);
+static char *authmethods_get(void);
+static int user_key_allowed(struct passwd *, Key *);
+static int hostbased_key_allowed(struct passwd *, const char *, char *, Key *);
 
 /* auth */
-void	userauth_banner(void);
-void	userauth_reply(Authctxt *authctxt, int authenticated);
-int	userauth_none(Authctxt *authctxt);
-int	userauth_passwd(Authctxt *authctxt);
-int	userauth_pubkey(Authctxt *authctxt);
-int	userauth_hostbased(Authctxt *authctxt);
-int	userauth_kbdint(Authctxt *authctxt);
+static void userauth_banner(void);
+static int userauth_none(Authctxt *);
+static int userauth_passwd(Authctxt *);
+static int userauth_pubkey(Authctxt *);
+static int userauth_hostbased(Authctxt *);
+static int userauth_kbdint(Authctxt *);
 
 Authmethod authmethods[] = {
 	{"none",
@@ -131,7 +128,7 @@ do_authentication2()
 	do_authenticated(authctxt);
 }
 
-void
+static void
 protocol_error(int type, int plen, void *ctxt)
 {
 	log("auth: protocol error: type %d plen %d", type, plen);
@@ -141,7 +138,7 @@ protocol_error(int type, int plen, void *ctxt)
 	packet_write_wait();
 }
 
-void
+static void
 input_service_request(int type, int plen, void *ctxt)
 {
 	Authctxt *authctxt = ctxt;
@@ -174,7 +171,7 @@ input_service_request(int type, int plen, void *ctxt)
 	xfree(service);
 }
 
-void
+static void
 input_userauth_request(int type, int plen, void *ctxt)
 {
 	Authctxt *authctxt = ctxt;
@@ -280,7 +277,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, char *method)
 	}
 }
 
-void
+static void
 userauth_banner(void)
 {
 	struct stat st;
@@ -311,7 +308,7 @@ done:
 	return;
 }
 
-int
+static int
 userauth_none(Authctxt *authctxt)
 {
 	/* disable method "none", only allowed one time */
@@ -323,7 +320,7 @@ userauth_none(Authctxt *authctxt)
 	return authctxt->valid ? auth_password(authctxt, "") : 0;
 }
 
-int
+static int
 userauth_passwd(Authctxt *authctxt)
 {
 	char *password;
@@ -343,7 +340,7 @@ userauth_passwd(Authctxt *authctxt)
 	return authenticated;
 }
 
-int
+static int
 userauth_kbdint(Authctxt *authctxt)
 {
 	int authenticated = 0;
@@ -363,7 +360,7 @@ userauth_kbdint(Authctxt *authctxt)
 	return authenticated;
 }
 
-int
+static int
 userauth_pubkey(Authctxt *authctxt)
 {
 	Buffer b;
@@ -465,7 +462,7 @@ userauth_pubkey(Authctxt *authctxt)
 	return authenticated;
 }
 
-int
+static int
 userauth_hostbased(Authctxt *authctxt)
 {
 	Buffer b;
@@ -550,7 +547,7 @@ auth_get_user(void)
 
 #define	DELIM	","
 
-char *
+static char *
 authmethods_get(void)
 {
 	Authmethod *method = NULL;
@@ -582,7 +579,7 @@ authmethods_get(void)
 	return list;
 }
 
-Authmethod *
+static Authmethod *
 authmethod_lookup(const char *name)
 {
 	Authmethod *method = NULL;
@@ -597,10 +594,10 @@ authmethod_lookup(const char *name)
 }
 
 /* return 1 if user allows given key */
-int
-user_key_allowed(struct passwd *pw, Key *key)
+static int
+user_key_allowed2(struct passwd *pw, Key *key, char *file)
 {
-	char line[8192], *file;
+	char line[8192];
 	int found_key = 0;
 	FILE *f;
 	u_long linenum = 0;
@@ -613,15 +610,12 @@ user_key_allowed(struct passwd *pw, Key *key)
 	/* Temporarily use the user's uid. */
 	temporarily_use_uid(pw);
 
-	/* The authorized keys. */
-	file = authorized_keys_file2(pw);
 	debug("trying public key file %s", file);
 
 	/* Fail quietly if file does not exist */
 	if (stat(file, &st) < 0) {
 		/* Restore the privileged uid. */
 		restore_uid();
-		xfree(file);
 		return 0;
 	}
 	/* Open the file containing the authorized keys. */
@@ -629,12 +623,10 @@ user_key_allowed(struct passwd *pw, Key *key)
 	if (!f) {
 		/* Restore the privileged uid. */
 		restore_uid();
-		xfree(file);
 		return 0;
 	}
 	if (options.strict_modes &&
-	    secure_filename(f, file, pw->pw_uid, line, sizeof(line)) != 0) {
-		xfree(file);
+	    secure_filename(f, file, pw, line, sizeof(line)) != 0) {
 		fclose(f);
 		log("Authentication refused: %s", line);
 		restore_uid();
@@ -653,7 +645,7 @@ user_key_allowed(struct passwd *pw, Key *key)
 		if (!*cp || *cp == '\n' || *cp == '#')
 			continue;
 
-		if (key_read(found, &cp) == -1) {
+		if (key_read(found, &cp) != 1) {
 			/* no key?  check if there are options for this key */
 			int quoted = 0;
 			debug2("user_key_allowed: check options: '%s'", cp);
@@ -667,7 +659,7 @@ user_key_allowed(struct passwd *pw, Key *key)
 			/* Skip remaining whitespace. */
 			for (; *cp == ' ' || *cp == '\t'; cp++)
 				;
-			if (key_read(found, &cp) == -1) {
+			if (key_read(found, &cp) != 1) {
 				debug2("user_key_allowed: advance: '%s'", cp);
 				/* still no key?  advance to next line*/
 				continue;
@@ -676,29 +668,45 @@ user_key_allowed(struct passwd *pw, Key *key)
 		if (key_equal(found, key) &&
 		    auth_parse_options(pw, options, file, linenum) == 1) {
 			found_key = 1;
-			debug("matching key found: file %s, line %ld",
+			debug("matching key found: file %s, line %lu",
 			    file, linenum);
 			break;
 		}
 	}
 	restore_uid();
 	fclose(f);
-	xfree(file);
 	key_free(found);
 	if (!found_key)
 		debug2("key not found");
 	return found_key;
 }
 
+/* check whether given key is in .ssh/authorized_keys* */
+static int
+user_key_allowed(struct passwd *pw, Key *key)
+{
+	int success;
+	char *file;
+
+	file = authorized_keys_file(pw);
+	success = user_key_allowed2(pw, key, file);
+	xfree(file);
+	if (success)
+		return success;
+
+	/* try suffix "2" for backward compat, too */
+	file = authorized_keys_file2(pw);
+	success = user_key_allowed2(pw, key, file);
+	xfree(file);
+	return success;
+}
+
 /* return 1 if given hostkey is allowed */
-int
+static int
 hostbased_key_allowed(struct passwd *pw, const char *cuser, char *chost,
     Key *key)
 {
-	Key *found;
 	const char *resolvedname, *ipaddr, *lookup;
-	struct stat st;
-	char *user_hostfile;
 	int host_status, len;
 
 	resolvedname = get_canonical_hostname(options.reverse_mapping_check);
@@ -726,32 +734,17 @@ hostbased_key_allowed(struct passwd *pw, const char *cuser, char *chost,
 	}
 	debug2("userauth_hostbased: access allowed by auth_rhosts2");
 
-	/* XXX this is copied from auth-rh-rsa.c and should be shared */
-	found = key_new(key->type);
-	host_status = check_host_in_hostfile(_PATH_SSH_SYSTEM_HOSTFILE2, lookup,
-	    key, found, NULL);
+	host_status = check_key_in_hostfiles(pw, key, lookup,
+	    _PATH_SSH_SYSTEM_HOSTFILE,
+	    options.ignore_user_known_hosts ? NULL : _PATH_SSH_USER_HOSTFILE);
 
-	if (host_status != HOST_OK && !options.ignore_user_known_hosts) {
-		user_hostfile = tilde_expand_filename(_PATH_SSH_USER_HOSTFILE2,
-		    pw->pw_uid);
-		if (options.strict_modes &&
-		    (stat(user_hostfile, &st) == 0) &&
-		    ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
-		     (st.st_mode & 022) != 0)) {
-			log("Hostbased authentication refused for %.100s: "
-			    "bad owner or modes for %.200s",
-			    pw->pw_name, user_hostfile);
-		} else {
-			temporarily_use_uid(pw);
-			host_status = check_host_in_hostfile(user_hostfile,
-			    lookup, key, found, NULL);
-			restore_uid();
-		}
-		xfree(user_hostfile);
-	}
-	key_free(found);
+	/* backward compat if no key has been found. */
+	if (host_status == HOST_NEW)
+		host_status = check_key_in_hostfiles(pw, key, lookup,
+		    _PATH_SSH_SYSTEM_HOSTFILE2,
+		    options.ignore_user_known_hosts ? NULL :
+		    _PATH_SSH_USER_HOSTFILE2);
 
-	debug2("userauth_hostbased: key %s for %s", host_status == HOST_OK ?
-	    "ok" : "not found", lookup);
 	return (host_status == HOST_OK);
 }
+
