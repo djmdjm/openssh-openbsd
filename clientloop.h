@@ -1,5 +1,18 @@
+/*	$OpenBSD: clientloop.h,v 1.4.2.1 2001/02/16 20:12:59 jason Exp $	*/
+
 /*
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Author: Tatu Ylonen <ylo@cs.hut.fi>
+ * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+ *                    All rights reserved
+ *
+ * As far as I am concerned, the code I have written for this software
+ * can be used freely for any purpose.  Any derived versions of this
+ * software must be clearly marked as such, and if the derived work is
+ * incompatible with the protocol description in the RFC file, it must be
+ * called by a name other than "ssh" or "Secure Shell".
+ */
+/*
+ * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,33 +35,5 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "includes.h"
-RCSID("$OpenBSD: hmac.c,v 1.4 2000/09/07 20:27:51 deraadt Exp $");
-
-#include "xmalloc.h"
-#include "ssh.h"
-#include "getput.h"
-
-#include <openssl/hmac.h>
-
-unsigned char *
-hmac(
-    EVP_MD *evp_md,
-    unsigned int seqno,
-    unsigned char *data, int datalen,
-    unsigned char *key, int keylen)
-{
-	HMAC_CTX c;
-	static unsigned char m[EVP_MAX_MD_SIZE];
-	unsigned char b[4];
-
-	if (key == NULL)
-		fatal("hmac: no key");
-	HMAC_Init(&c, key, keylen, evp_md);
-	PUT_32BIT(b, seqno);
-	HMAC_Update(&c, b, sizeof b);
-	HMAC_Update(&c, data, datalen);
-	HMAC_Final(&c, m, NULL);
-	HMAC_cleanup(&c);
-	return(m);
-}
+/* Client side main loop for the interactive session. */
+int     client_loop(int have_pty, int escape_char, int id);

@@ -1,5 +1,8 @@
+/*	$OpenBSD: atomicio.h,v 1.2.2.1 2001/02/16 20:12:51 jason Exp $	*/
+
 /*
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 1995,1999 Theo de Raadt
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,25 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef DSA_H
-#define DSA_H
 
-Key	*dsa_key_from_blob(char *blob, int blen);
-int	dsa_make_key_blob(Key *key, unsigned char **blobp, unsigned int *lenp);
-
-int
-dsa_sign(
-    Key *key,
-    unsigned char **sigp, int *lenp,
-    unsigned char *data, int datalen);
-
-int
-dsa_verify(
-    Key *key,
-    unsigned char *signature, int signaturelen,
-    unsigned char *data, int datalen);
-
-Key *
-dsa_generate_key(unsigned int bits);
-
-#endif
+/*
+ * Ensure all of data on socket comes through. f==read || f==write
+ */
+ssize_t	atomicio(ssize_t (*f)(), int fd, void *s, size_t n);

@@ -1,5 +1,8 @@
+/*	$OpenBSD: sftp-common.h,v 1.1.2.1 2001/02/16 20:13:14 jason Exp $	*/
+
 /*
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2001 Damien Miller.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,14 +24,32 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef HMAC_H
-#define HMAC_H
 
-unsigned char *
-hmac(
-    EVP_MD *evp_md,
-    unsigned int seqno,
-    unsigned char *data, int datalen,
-    unsigned char *key, int len);
+typedef struct Attrib Attrib;
 
-#endif
+/* File attributes */
+struct Attrib {
+	u_int32_t	flags;
+	u_int64_t	size;
+	u_int32_t	uid;
+	u_int32_t	gid;
+	u_int32_t	perm;
+	u_int32_t	atime;
+	u_int32_t	mtime;
+};
+
+/* Clear contents of attributes structure */
+void attrib_clear(Attrib *a);
+
+/* Convert from struct stat to filexfer attribs */
+void stat_to_attrib(struct stat *st, Attrib *a);
+
+/* Decode attributes in buffer */
+Attrib *decode_attrib(Buffer *b);
+
+/* Encode attributes to buffer */
+void encode_attrib(Buffer *b, Attrib *a);
+
+/* Convert from SSH2_FX_ status to text error message */
+const char *fx2txt(int status);
+
