@@ -1,4 +1,4 @@
-/*	$OpenBSD: key.h,v 1.20 2003/02/12 09:33:04 markus Exp $	*/
+/*	$OpenBSD: key.h,v 1.19.4.1 2003/04/01 00:12:13 margarida Exp $	*/
 
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.

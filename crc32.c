@@ -1,4 +1,4 @@
-/*	$OpenBSD: crc32.c,v 1.9 2003/02/12 21:39:50 markus Exp $	*/
+/*	$OpenBSD: crc32.c,v 1.8.8.1 2003/04/01 00:12:13 margarida Exp $	*/
 
 /*
  * Copyright (c) 2003 Markus Friedl.  All rights reserved.

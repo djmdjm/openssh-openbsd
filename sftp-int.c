@@ -25,7 +25,7 @@
 /* XXX: recursive operations */
 
 #include "includes.h"
-RCSID("$OpenBSD: sftp-int.c,v 1.57 2003/03/05 22:33:43 markus Exp $");
+RCSID("$OpenBSD: sftp-int.c,v 1.49.2.1 2003/04/01 00:12:14 margarida Exp $");
 
 #include <glob.h>
 

@@ -24,7 +24,7 @@
 
 #include "includes.h"
 
-RCSID("$OpenBSD: sftp.c,v 1.34 2003/01/10 08:19:07 fgsch Exp $");
+RCSID("$OpenBSD: sftp.c,v 1.31.2.1 2003/04/01 00:12:14 margarida Exp $");
 
 /* XXX: short-form remote directory listings (like 'ls -C') */
 

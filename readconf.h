@@ -1,4 +1,4 @@
-/*	$OpenBSD: readconf.h,v 1.44 2002/11/07 22:08:07 markus Exp $	*/
+/*	$OpenBSD: readconf.h,v 1.43.2.1 2003/04/01 00:12:14 margarida Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/* $OpenBSD: sftp-int.h,v 1.6 2003/01/08 23:53:26 djm Exp $ */
+/* $OpenBSD: sftp-int.h,v 1.5.4.1 2003/04/01 00:12:14 margarida Exp $ */
 
 /*
  * Copyright (c) 2001,2002 Damien Miller.  All rights reserved.

@@ -1,4 +1,4 @@
-/*	$OpenBSD: kex.h,v 1.33 2003/02/16 17:09:57 markus Exp $	*/
+/*	$OpenBSD: kex.h,v 1.32.2.1 2003/04/01 00:12:13 margarida Exp $	*/
 
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
