@@ -12,7 +12,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.27 2000/05/22 18:42:00 markus Exp $");
+RCSID("$Id: cipher.c,v 1.26.2.1 2000/06/12 02:37:33 jason Exp $");
 
 #include "ssh.h"
 #include "cipher.h"

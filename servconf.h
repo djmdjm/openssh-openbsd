@@ -13,7 +13,7 @@
  *
  */
 
-/* RCSID("$Id: servconf.h,v 1.23 2000/05/31 06:36:40 markus Exp $"); */
+/* RCSID("$Id: servconf.h,v 1.22.2.1 2000/06/12 02:37:35 jason Exp $"); */
 
 #ifndef SERVCONF_H
 #define SERVCONF_H

@@ -14,7 +14,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: match.c,v 1.7 2000/06/06 19:32:14 markus Exp $");
+RCSID("$Id: match.c,v 1.6.2.1 2000/06/12 02:37:34 jason Exp $");
 
 #include "ssh.h"
 

@@ -13,7 +13,7 @@
  *
  */
 
-/* RCSID("$Id: ssh.h,v 1.46 2000/05/17 08:20:15 markus Exp $"); */
+/* RCSID("$Id: ssh.h,v 1.45.2.1 2000/06/12 02:37:37 jason Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H

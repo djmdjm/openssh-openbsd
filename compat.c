@@ -28,7 +28,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: compat.c,v 1.14 2000/05/22 18:42:01 markus Exp $");
+RCSID("$Id: compat.c,v 1.13.2.1 2000/06/12 02:37:33 jason Exp $");
 
 #include "ssh.h"
 #include "packet.h"

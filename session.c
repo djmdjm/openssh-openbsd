@@ -8,7 +8,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: session.c,v 1.17 2000/06/05 19:53:40 markus Exp $");
+RCSID("$OpenBSD: session.c,v 1.12.2.1 2000/06/12 02:37:35 jason Exp $");
 
 #include "xmalloc.h"
 #include "ssh.h"
