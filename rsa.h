@@ -13,7 +13,7 @@
  *
 */
 
-/* RCSID("$Id: rsa.h,v 1.6 2000/04/14 10:30:32 markus Exp $"); */
+/* RCSID("$OpenBSD: rsa.h,v 1.6.2.1 2000/09/01 18:23:22 jason Exp $"); */
 
 #ifndef RSA_H
 #define RSA_H

@@ -8,7 +8,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: xmalloc.c,v 1.6 2000/04/14 10:30:34 markus Exp $");
+RCSID("$OpenBSD: xmalloc.c,v 1.6.2.1 2000/09/01 18:23:25 jason Exp $");
 
 #include "ssh.h"
 

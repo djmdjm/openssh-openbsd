@@ -24,7 +24,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: atomicio.c,v 1.3 2000/03/16 20:56:13 markus Exp $");
+RCSID("$OpenBSD: atomicio.c,v 1.3.2.1 2000/09/01 18:23:16 jason Exp $");
 
 #include "xmalloc.h"
 #include "ssh.h"

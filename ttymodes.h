@@ -12,7 +12,7 @@
  *
  */
 
-/* RCSID("$Id: ttymodes.h,v 1.7 2000/04/14 10:30:34 markus Exp $"); */
+/* RCSID("$OpenBSD: ttymodes.h,v 1.7.2.1 2000/09/01 18:23:25 jason Exp $"); */
 
 /* The tty mode description is a stream of bytes.  The stream consists of
  * opcode-arguments pairs.  It is terminated by opcode TTY_OP_END (0).

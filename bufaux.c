@@ -17,7 +17,7 @@
  */
 
 #include "includes.h"
-RCSID("$Id: bufaux.c,v 1.11 2000/04/14 10:30:30 markus Exp $");
+RCSID("$OpenBSD: bufaux.c,v 1.11.2.1 2000/09/01 18:23:17 jason Exp $");
 
 #include "ssh.h"
 #include <openssl/bn.h>

@@ -13,7 +13,7 @@
  * tty.
  */
 
-/* RCSID("$Id: pty.h,v 1.6 2000/04/14 10:30:32 markus Exp $"); */
+/* RCSID("$OpenBSD: pty.h,v 1.6.2.1 2000/09/01 18:23:21 jason Exp $"); */
 
 #ifndef PTY_H
 #define PTY_H

@@ -35,7 +35,7 @@
 */
 
 #include "includes.h"
-RCSID("$Id: rsa.c,v 1.14 2000/04/14 10:30:32 markus Exp $");
+RCSID("$OpenBSD: rsa.c,v 1.14.2.1 2000/09/01 18:23:22 jason Exp $");
 
 #include "rsa.h"
 #include "ssh.h"
