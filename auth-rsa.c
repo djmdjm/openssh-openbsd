@@ -14,7 +14,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth-rsa.c,v 1.63 2005/06/17 02:44:32 djm Exp $");
+RCSID("$OpenBSD: auth-rsa.c,v 1.62.2.1 2005/09/04 18:39:52 brad Exp $");
 
 #include <openssl/rsa.h>
 #include <openssl/md5.h>

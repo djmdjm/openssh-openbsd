@@ -1,4 +1,4 @@
-/* $OpenBSD: moduli.c,v 1.12 2005/07/17 07:17:55 djm Exp $ */
+/* $OpenBSD: moduli.c,v 1.10.2.1 2005/09/04 18:40:02 brad Exp $ */
 /*
  * Copyright 1994 Phil Karn <karn@qualcomm.com>
  * Copyright 1996-1998, 2003 William Allen Simpson <wsimpson@greendragon.com>

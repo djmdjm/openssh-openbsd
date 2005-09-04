@@ -1,4 +1,4 @@
-/*	$OpenBSD: atomicio.h,v 1.6 2005/05/24 17:32:43 avsm Exp $	*/
+/*	$OpenBSD: atomicio.h,v 1.5.8.1 2005/09/04 18:39:52 brad Exp $	*/
 
 /*
  * Copyright (c) 1995,1999 Theo de Raadt.  All rights reserved.

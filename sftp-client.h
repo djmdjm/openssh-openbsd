@@ -1,4 +1,4 @@
-/* $OpenBSD: sftp-client.h,v 1.14 2005/04/26 12:59:02 jmc Exp $ */
+/* $OpenBSD: sftp-client.h,v 1.13.2.1 2005/09/04 18:40:04 brad Exp $ */
 
 /*
  * Copyright (c) 2001-2004 Damien Miller <djm@openbsd.org>

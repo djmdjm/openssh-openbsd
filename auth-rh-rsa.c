@@ -13,7 +13,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: auth-rh-rsa.c,v 1.38 2005/07/17 07:17:54 djm Exp $");
+RCSID("$OpenBSD: auth-rh-rsa.c,v 1.37.6.1 2005/09/04 18:39:52 brad Exp $");
 
 #include "packet.h"
 #include "uidswap.h"

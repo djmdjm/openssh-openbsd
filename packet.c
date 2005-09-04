@@ -37,7 +37,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: packet.c,v 1.119 2005/07/28 17:36:22 markus Exp $");
+RCSID("$OpenBSD: packet.c,v 1.116.2.1 2005/09/04 18:40:02 brad Exp $");
 
 #include <sys/queue.h>
 

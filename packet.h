@@ -1,4 +1,4 @@
-/*	$OpenBSD: packet.h,v 1.43 2005/07/25 11:59:40 markus Exp $	*/
+/*	$OpenBSD: packet.h,v 1.41.4.1 2005/09/04 18:40:02 brad Exp $	*/
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

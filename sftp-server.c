@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include "includes.h"
-RCSID("$OpenBSD: sftp-server.c,v 1.48 2005/06/17 02:44:33 djm Exp $");
+RCSID("$OpenBSD: sftp-server.c,v 1.47.4.1 2005/09/04 18:40:04 brad Exp $");
 
 #include "buffer.h"
 #include "bufaux.h"

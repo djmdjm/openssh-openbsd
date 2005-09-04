@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "includes.h"
-RCSID("$OpenBSD: key.c,v 1.58 2005/06/17 02:44:32 djm Exp $");
+RCSID("$OpenBSD: key.c,v 1.57.2.1 2005/09/04 18:40:02 brad Exp $");
 
 #include <openssl/evp.h>
 
