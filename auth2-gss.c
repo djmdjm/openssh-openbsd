@@ -1,4 +1,4 @@
-/*	$OpenBSD: auth2-gss.c,v 1.12 2005/10/13 22:24:31 stevesk Exp $	*/
+/*	$OpenBSD: auth2-gss.c,v 1.10.2.1 2006/02/03 03:01:55 brad Exp $	*/
 
 /*
  * Copyright (c) 2001-2003 Simon Wilkinson. All rights reserved.

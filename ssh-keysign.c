@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "includes.h"
-RCSID("$OpenBSD: ssh-keysign.c,v 1.19 2005/09/13 23:40:07 djm Exp $");
+RCSID("$OpenBSD: ssh-keysign.c,v 1.18.6.1 2006/02/03 03:01:57 brad Exp $");
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>

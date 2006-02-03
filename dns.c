@@ -1,4 +1,4 @@
-/*	$OpenBSD: dns.c,v 1.16 2005/10/17 14:13:35 stevesk Exp $	*/
+/*	$OpenBSD: dns.c,v 1.12.2.1 2006/02/03 03:01:56 brad Exp $	*/
 
 /*
  * Copyright (c) 2003 Wesley Griffin. All rights reserved.
@@ -26,7 +26,7 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: dns.c,v 1.16 2005/10/17 14:13:35 stevesk Exp $");
+RCSID("$OpenBSD: dns.c,v 1.12.2.1 2006/02/03 03:01:56 brad Exp $");
 
 #include <netdb.h>
 
