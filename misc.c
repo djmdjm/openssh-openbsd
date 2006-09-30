@@ -1,4 +1,4 @@
-/* $OpenBSD: misc.c,v 1.64 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: misc.c,v 1.45.2.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  * Copyright (c) 2005,2006 Damien Miller.  All rights reserved.

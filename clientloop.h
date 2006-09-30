@@ -1,4 +1,4 @@
-/* $OpenBSD: clientloop.h,v 1.16 2006/03/25 22:22:42 djm Exp $ */
+/* $OpenBSD: clientloop.h,v 1.15.2.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/* $OpenBSD: authfile.h,v 1.13 2006/04/25 08:02:27 dtucker Exp $ */
+/* $OpenBSD: authfile.h,v 1.10.16.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/* $OpenBSD: auth-rhosts.c,v 1.41 2006/08/03 03:34:41 deraadt Exp $ */
+/* $OpenBSD: auth-rhosts.c,v 1.35.2.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

@@ -1,4 +1,4 @@
-/* $OpenBSD: key.c,v 1.67 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: key.c,v 1.58.4.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * read_bignum():
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

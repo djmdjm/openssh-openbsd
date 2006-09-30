@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-passwd.c,v 1.9 2006/08/03 03:34:41 deraadt Exp $ */
+/* $OpenBSD: auth2-passwd.c,v 1.5.10.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *

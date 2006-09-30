@@ -1,4 +1,4 @@
-/* $OpenBSD: nchan.c,v 1.57 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: nchan.c,v 1.51.8.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 1999, 2000, 2001, 2002 Markus Friedl.  All rights reserved.
  *

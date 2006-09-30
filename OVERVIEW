@@ -165,4 +165,4 @@ these programs.
 	uidswap.c    uid-swapping
 	xmalloc.c    "safe" malloc routines
 
-$OpenBSD: OVERVIEW,v 1.11 2006/08/03 03:34:41 deraadt Exp $
+$OpenBSD: OVERVIEW,v 1.8.8.1 2006/09/30 04:06:50 brad Exp $

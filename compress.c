@@ -1,4 +1,4 @@
-/* $OpenBSD: compress.c,v 1.25 2006/08/06 01:13:32 stevesk Exp $ */
+/* $OpenBSD: compress.c,v 1.21.10.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

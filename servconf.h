@@ -1,4 +1,4 @@
-/* $OpenBSD: servconf.h,v 1.79 2006/08/14 12:40:25 dtucker Exp $ */
+/* $OpenBSD: servconf.h,v 1.72.2.1 2006/09/30 04:06:51 brad Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

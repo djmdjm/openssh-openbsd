@@ -1,4 +1,4 @@
-/* $OpenBSD: sshconnect.c,v 1.199 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: sshconnect.c,v 1.176.2.1 2006/09/30 04:06:51 brad Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

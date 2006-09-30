@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-none.c,v 1.13 2006/08/05 07:52:52 dtucker Exp $ */
+/* $OpenBSD: auth2-none.c,v 1.8.2.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *

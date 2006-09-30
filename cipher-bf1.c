@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher-bf1.c,v 1.5 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: cipher-bf1.c,v 1.1.16.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2003 Markus Friedl.  All rights reserved.
  *

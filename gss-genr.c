@@ -1,4 +1,4 @@
-/* $OpenBSD: gss-genr.c,v 1.17 2006/08/29 12:02:30 dtucker Exp $ */
+/* $OpenBSD: gss-genr.c,v 1.6.2.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Copyright (c) 2001-2006 Simon Wilkinson. All rights reserved.

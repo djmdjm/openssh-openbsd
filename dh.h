@@ -1,4 +1,4 @@
-/* $OpenBSD: dh.h,v 1.9 2006/03/25 22:22:43 djm Exp $ */
+/* $OpenBSD: dh.h,v 1.8.8.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Copyright (c) 2000 Niels Provos.  All rights reserved.

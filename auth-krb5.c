@@ -1,4 +1,4 @@
-/* $OpenBSD: auth-krb5.c,v 1.19 2006/08/03 03:34:41 deraadt Exp $ */
+/* $OpenBSD: auth-krb5.c,v 1.16.2.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  *    Kerberos v5 authentication and ticket-passing routines.
  *

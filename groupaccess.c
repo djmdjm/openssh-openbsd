@@ -1,4 +1,4 @@
-/* $OpenBSD: groupaccess.c,v 1.12 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: groupaccess.c,v 1.6.12.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2001 Kevin Steves.  All rights reserved.
  *

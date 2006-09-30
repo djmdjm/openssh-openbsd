@@ -1,4 +1,4 @@
-/* $OpenBSD: channels.h,v 1.88 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: channels.h,v 1.83.2.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

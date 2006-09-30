@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-rsa.c,v 1.39 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: ssh-rsa.c,v 1.32.4.1 2006/09/30 04:06:51 brad Exp $ */
 /*
  * Copyright (c) 2000, 2003 Markus Friedl <markus@openbsd.org>
  *

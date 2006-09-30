@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.h,v 1.36 2006/03/25 22:22:42 djm Exp $ */
+/* $OpenBSD: cipher.h,v 1.35.8.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/* $OpenBSD: auth1.c,v 1.70 2006/08/03 03:34:41 deraadt Exp $ */
+/* $OpenBSD: auth1.c,v 1.62.4.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved

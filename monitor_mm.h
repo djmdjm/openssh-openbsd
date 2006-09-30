@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor_mm.h,v 1.4 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: monitor_mm.h,v 1.2.22.1 2006/09/30 04:06:50 brad Exp $ */
 
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>

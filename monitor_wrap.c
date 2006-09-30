@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor_wrap.c,v 1.54 2006/08/12 20:46:46 miod Exp $ */
+/* $OpenBSD: monitor_wrap.c,v 1.40.4.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * Copyright 2002 Markus Friedl <markus@openbsd.org>

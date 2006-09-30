@@ -1,4 +1,4 @@
-/* $OpenBSD: progressmeter.c,v 1.37 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: progressmeter.c,v 1.26.2.1 2006/09/30 04:06:51 brad Exp $ */
 /*
  * Copyright (c) 2003 Nils Nordman.  All rights reserved.
  *

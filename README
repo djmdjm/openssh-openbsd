@@ -24,4 +24,4 @@ for SSH protocol versions 1.5 and 2.0.
 
 See http://www.openssh.com/ for more information.
 
-$OpenBSD: README,v 1.7 2006/04/01 05:37:46 djm Exp $
+$OpenBSD: README,v 1.6.10.1 2006/09/30 04:06:50 brad Exp $

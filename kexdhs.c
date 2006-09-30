@@ -1,4 +1,4 @@
-/* $OpenBSD: kexdhs.c,v 1.7 2006/08/03 03:34:42 deraadt Exp $ */
+/* $OpenBSD: kexdhs.c,v 1.3.2.1 2006/09/30 04:06:50 brad Exp $ */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  *
