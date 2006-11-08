@@ -1,4 +1,4 @@
-/* $OpenBSD: auth-rsa.c,v 1.72 2006/11/06 21:25:27 markus Exp $ */
+/* $OpenBSD: auth-rsa.c,v 1.71.4.1 2006/11/08 00:42:10 brad Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

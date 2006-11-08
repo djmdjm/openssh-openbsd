@@ -1,4 +1,4 @@
-/* $OpenBSD: rsa.c,v 1.29 2006/11/06 21:25:28 markus Exp $ */
+/* $OpenBSD: rsa.c,v 1.28.4.1 2006/11/08 00:42:10 brad Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

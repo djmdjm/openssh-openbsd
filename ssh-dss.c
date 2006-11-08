@@ -1,4 +1,4 @@
-/* $OpenBSD: ssh-dss.c,v 1.24 2006/11/06 21:25:28 markus Exp $ */
+/* $OpenBSD: ssh-dss.c,v 1.23.4.1 2006/11/08 00:42:11 brad Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *

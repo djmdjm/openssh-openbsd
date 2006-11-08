@@ -1,4 +1,4 @@
-/* $OpenBSD: kexgexs.c,v 1.10 2006/11/06 21:25:28 markus Exp $ */
+/* $OpenBSD: kexgexs.c,v 1.8.4.1 2006/11/08 00:42:10 brad Exp $ */
 /*
  * Copyright (c) 2000 Niels Provos.  All rights reserved.
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.

@@ -1,4 +1,4 @@
-/* $OpenBSD: scard.c,v 1.36 2006/11/06 21:25:28 markus Exp $ */
+/* $OpenBSD: scard.c,v 1.35.4.1 2006/11/08 00:42:10 brad Exp $ */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  *

@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.c,v 1.89 2006/11/07 10:31:31 markus Exp $ */
+/* $OpenBSD: monitor.c,v 1.88.4.1 2006/11/08 00:42:10 brad Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * Copyright 2002 Markus Friedl <markus@openbsd.org>
