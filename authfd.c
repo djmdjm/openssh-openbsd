@@ -1,4 +1,4 @@
-/* $OpenBSD: authfd.c,v 1.88 2013/11/08 00:39:14 djm Exp $ */
+/* $OpenBSD: authfd.c,v 1.86.8.1 2013/11/08 05:52:21 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -222,7 +222,7 @@ ssh_close_authentication_connection(AuthenticationConnection *auth)
 {
 	buffer_free(&auth->identities);
 	close(auth->fd);
-	free(auth);
+	xfree(auth);
 }
 
 /* Lock/unlock agent */
@@ -341,7 +341,7 @@ ssh_get_next_identity(AuthenticationConnection *auth, char **comment, int versio
 		blob = buffer_get_string(&auth->identities, &blen);
 		*comment = buffer_get_string(&auth->identities, NULL);
 		key = key_from_blob(blob, blen);
-		free(blob);
+		xfree(blob);
 		break;
 	default:
 		return NULL;
@@ -434,7 +434,7 @@ ssh_agent_sign(AuthenticationConnection *auth,
 	buffer_put_string(&msg, blob, blen);
 	buffer_put_string(&msg, data, datalen);
 	buffer_put_int(&msg, flags);
-	free(blob);
+	xfree(blob);
 
 	if (ssh_request_reply(auth, &msg, &msg) == 0) {
 		buffer_free(&msg);
@@ -608,7 +608,7 @@ ssh_remove_identity(AuthenticationConnection *auth, Key *key)
 		key_to_blob(key, &blob, &blen);
 		buffer_put_char(&msg, SSH2_AGENTC_REMOVE_IDENTITY);
 		buffer_put_string(&msg, blob, blen);
-		free(blob);
+		xfree(blob);
 	} else {
 		buffer_free(&msg);
 		return 0;

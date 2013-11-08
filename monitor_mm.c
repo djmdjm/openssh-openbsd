@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor_mm.c,v 1.18 2013/11/08 00:39:15 djm Exp $ */
+/* $OpenBSD: monitor_mm.c,v 1.16.16.1 2013/11/08 05:52:21 djm Exp $ */
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -31,7 +31,6 @@
 
 #include <errno.h>
 #include <stdarg.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "xmalloc.h"
@@ -122,7 +121,7 @@ mm_freelist(struct mm_master *mmalloc, struct mmtree *head)
 		next = RB_NEXT(mmtree, head, mms);
 		RB_REMOVE(mmtree, head, mms);
 		if (mmalloc == NULL)
-			free(mms);
+			xfree(mms);
 		else
 			mm_free(mmalloc, mms);
 	}
@@ -140,7 +139,7 @@ mm_destroy(struct mm_master *mm)
 		fatal("munmap(%p, %lu): %s", mm->address, (u_long)mm->size,
 		    strerror(errno));
 	if (mm->mmalloc == NULL)
-		free(mm);
+		xfree(mm);
 	else
 		mm_free(mm->mmalloc, mm);
 }
@@ -192,7 +191,7 @@ mm_malloc(struct mm_master *mm, size_t size)
 	if (mms->size == 0) {
 		RB_REMOVE(mmtree, &mm->rb_free, mms);
 		if (mm->mmalloc == NULL)
-			free(mms);
+			xfree(mms);
 		else
 			mm_free(mm->mmalloc, mms);
 	}
@@ -248,7 +247,7 @@ mm_free(struct mm_master *mm, void *address)
 		prev->size += mms->size;
 		RB_REMOVE(mmtree, &mm->rb_free, mms);
 		if (mm->mmalloc == NULL)
-			free(mms);
+			xfree(mms);
 		else
 			mm_free(mm->mmalloc, mms);
 	} else
@@ -272,7 +271,7 @@ mm_free(struct mm_master *mm, void *address)
 	RB_REMOVE(mmtree, &mm->rb_free, mms);
 
 	if (mm->mmalloc == NULL)
-		free(mms);
+		xfree(mms);
 	else
 		mm_free(mm->mmalloc, mms);
 }

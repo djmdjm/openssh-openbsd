@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-chall.c,v 1.39 2013/11/08 00:39:14 djm Exp $ */
+/* $OpenBSD: auth2-chall.c,v 1.36.2.1 2013/11/08 05:52:21 djm Exp $ */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2001 Per Allansson.  All rights reserved.
@@ -102,13 +102,15 @@ kbdint_free(KbdintAuthctxt *kbdintctxt)
 {
 	if (kbdintctxt->device)
 		kbdint_reset_device(kbdintctxt);
-	free(kbdintctxt->devices);
-	bzero(kbdintctxt, sizeof(*kbdintctxt));
-	free(kbdintctxt);
+	if (kbdintctxt->devices) {
+		xfree(kbdintctxt->devices);
+		kbdintctxt->devices = NULL;
+	}
+	xfree(kbdintctxt);
 }
 /* get next device */
 static int
-kbdint_next_device(Authctxt *authctxt, KbdintAuthctxt *kbdintctxt)
+kbdint_next_device(KbdintAuthctxt *kbdintctxt)
 {
 	size_t len;
 	char *t;
@@ -122,16 +124,12 @@ kbdint_next_device(Authctxt *authctxt, KbdintAuthctxt *kbdintctxt)
 
 		if (len == 0)
 			break;
-		for (i = 0; devices[i]; i++) {
-			if (!auth2_method_allowed(authctxt,
-			    "keyboard-interactive", devices[i]->name))
-				continue;
+		for (i = 0; devices[i]; i++)
 			if (strncmp(kbdintctxt->devices, devices[i]->name, len) == 0)
 				kbdintctxt->device = devices[i];
-		}
 		t = kbdintctxt->devices;
 		kbdintctxt->devices = t[len] ? xstrdup(t+len+1) : NULL;
-		free(t);
+		xfree(t);
 		debug2("kbdint_next_device: devices %s", kbdintctxt->devices ?
 		    kbdintctxt->devices : "<empty>");
 	} while (kbdintctxt->devices && !kbdintctxt->device);
@@ -178,7 +176,7 @@ auth2_challenge_start(Authctxt *authctxt)
 	debug2("auth2_challenge_start: devices %s",
 	    kbdintctxt->devices ?  kbdintctxt->devices : "<empty>");
 
-	if (kbdint_next_device(authctxt, kbdintctxt) == 0) {
+	if (kbdint_next_device(kbdintctxt) == 0) {
 		auth2_challenge_stop(authctxt);
 		return 0;
 	}
@@ -225,11 +223,11 @@ send_userauth_info_request(Authctxt *authctxt)
 	packet_write_wait();
 
 	for (i = 0; i < kbdintctxt->nreq; i++)
-		free(prompts[i]);
-	free(prompts);
-	free(echo_on);
-	free(name);
-	free(instr);
+		xfree(prompts[i]);
+	xfree(prompts);
+	xfree(echo_on);
+	xfree(name);
+	xfree(instr);
 	return 1;
 }
 
@@ -268,9 +266,10 @@ input_userauth_info_response(int type, u_int32_t seq, void *ctxt)
 
 	for (i = 0; i < nresp; i++) {
 		memset(response[i], 'r', strlen(response[i]));
-		free(response[i]);
+		xfree(response[i]);
 	}
-	free(response);
+	if (response)
+		xfree(response);
 
 	switch (res) {
 	case 0:
