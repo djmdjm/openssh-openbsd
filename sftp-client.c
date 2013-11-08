@@ -1,4 +1,4 @@
-/* $OpenBSD: sftp-client.c,v 1.107 2013/10/17 00:30:13 djm Exp $ */
+/* $OpenBSD: sftp-client.c,v 1.101.2.1 2013/11/08 01:33:56 djm Exp $ */
 /*
  * Copyright (c) 2001-2004 Damien Miller <djm@openbsd.org>
  *
@@ -69,7 +69,6 @@ struct sftp_conn {
 #define SFTP_EXT_STATVFS	0x00000002
 #define SFTP_EXT_FSTATVFS	0x00000004
 #define SFTP_EXT_HARDLINK	0x00000008
-#define SFTP_EXT_FSYNC		0x00000010
 	u_int exts;
 	u_int64_t limit_kbps;
 	struct bwlimit bwlimit_in, bwlimit_out;
@@ -331,8 +330,7 @@ do_init(int fd_in, int fd_out, u_int transfer_buflen, u_int num_requests,
 	Buffer msg;
 	struct sftp_conn *ret;
 
-	ret = xcalloc(1, sizeof(*ret));
-	ret->msg_id = 1;
+	ret = xmalloc(sizeof(*ret));
 	ret->fd_in = fd_in;
 	ret->fd_out = fd_out;
 	ret->transfer_buflen = transfer_buflen;
@@ -382,10 +380,6 @@ do_init(int fd_in, int fd_out, u_int transfer_buflen, u_int num_requests,
 		    strcmp(value, "1") == 0) {
 			ret->exts |= SFTP_EXT_HARDLINK;
 			known = 1;
- 		} else if (strcmp(name, "fsync@openssh.com") == 0 &&
- 		    strcmp(value, "1") == 0) {
- 			ret->exts |= SFTP_EXT_FSYNC;
- 			known = 1;
 		}
 		if (known) {
 			debug2("Server supports extension \"%s\" revision %s",
@@ -446,7 +440,7 @@ do_close(struct sftp_conn *conn, char *handle, u_int handle_len)
 
 
 static int
-do_lsreaddir(struct sftp_conn *conn, char *path, int print_flag,
+do_lsreaddir(struct sftp_conn *conn, char *path, int printflag,
     SFTP_DIRENT ***dir)
 {
 	Buffer msg;
@@ -470,7 +464,7 @@ do_lsreaddir(struct sftp_conn *conn, char *path, int print_flag,
 
 	if (dir) {
 		ents = 0;
-		*dir = xmalloc(sizeof(**dir));
+		*dir = xcalloc(1, sizeof(**dir));
 		(*dir)[0] = NULL;
 	}
 
@@ -528,7 +522,7 @@ do_lsreaddir(struct sftp_conn *conn, char *path, int print_flag,
 			longname = buffer_get_string(&msg, NULL);
 			a = decode_attrib(&msg);
 
-			if (print_flag)
+			if (printflag)
 				printf("%s\n", longname);
 
 			/*
@@ -544,7 +538,7 @@ do_lsreaddir(struct sftp_conn *conn, char *path, int print_flag,
 
 			if (dir) {
 				*dir = xrealloc(*dir, ents + 2, sizeof(**dir));
-				(*dir)[ents] = xmalloc(sizeof(***dir));
+				(*dir)[ents] = xcalloc(1, sizeof(***dir));
 				(*dir)[ents]->filename = xstrdup(filename);
 				(*dir)[ents]->longname = xstrdup(longname);
 				memcpy(&(*dir)[ents]->a, a, sizeof(*a));
@@ -563,7 +557,7 @@ do_lsreaddir(struct sftp_conn *conn, char *path, int print_flag,
 	/* Don't return partial matches on interrupt */
 	if (interrupted && dir != NULL && *dir != NULL) {
 		free_sftp_dirents(*dir);
-		*dir = xmalloc(sizeof(**dir));
+		*dir = xcalloc(1, sizeof(**dir));
 		**dir = NULL;
 	}
 
@@ -604,7 +598,7 @@ do_rm(struct sftp_conn *conn, char *path)
 }
 
 int
-do_mkdir(struct sftp_conn *conn, char *path, Attrib *a, int print_flag)
+do_mkdir(struct sftp_conn *conn, char *path, Attrib *a, int printflag)
 {
 	u_int status, id;
 
@@ -613,7 +607,7 @@ do_mkdir(struct sftp_conn *conn, char *path, Attrib *a, int print_flag)
 	    strlen(path), a);
 
 	status = get_status(conn, id);
-	if (status != SSH2_FX_OK && print_flag)
+	if (status != SSH2_FX_OK && printflag)
 		error("Couldn't create directory: %s", fx2txt(status));
 
 	return(status);
@@ -741,7 +735,7 @@ do_realpath(struct sftp_conn *conn, char *path)
 	if (type == SSH2_FXP_STATUS) {
 		u_int status = buffer_get_int(&msg);
 
-		error("Couldn't canonicalize: %s", fx2txt(status));
+		error("Couldn't canonicalise: %s", fx2txt(status));
 		buffer_free(&msg);
 		return NULL;
 	} else if (type != SSH2_FXP_NAME)
@@ -767,18 +761,16 @@ do_realpath(struct sftp_conn *conn, char *path)
 }
 
 int
-do_rename(struct sftp_conn *conn, char *oldpath, char *newpath,
-    int force_legacy)
+do_rename(struct sftp_conn *conn, char *oldpath, char *newpath)
 {
 	Buffer msg;
 	u_int status, id;
-	int use_ext = (conn->exts & SFTP_EXT_POSIX_RENAME) && !force_legacy;
 
 	buffer_init(&msg);
 
 	/* Send rename request */
 	id = conn->msg_id++;
-	if (use_ext) {
+	if ((conn->exts & SFTP_EXT_POSIX_RENAME)) {
 		buffer_put_char(&msg, SSH2_FXP_EXTENDED);
 		buffer_put_int(&msg, id);
 		buffer_put_cstring(&msg, "posix-rename@openssh.com");
@@ -790,8 +782,8 @@ do_rename(struct sftp_conn *conn, char *oldpath, char *newpath,
 	buffer_put_cstring(&msg, newpath);
 	send_msg(conn, &msg);
 	debug3("Sent message %s \"%s\" -> \"%s\"",
-	    use_ext ? "posix-rename@openssh.com" : "SSH2_FXP_RENAME",
-	    oldpath, newpath);
+	    (conn->exts & SFTP_EXT_POSIX_RENAME) ? "posix-rename@openssh.com" :
+	    "SSH2_FXP_RENAME", oldpath, newpath);
 	buffer_free(&msg);
 
 	status = get_status(conn, id);
@@ -865,36 +857,6 @@ do_symlink(struct sftp_conn *conn, char *oldpath, char *newpath)
 		    newpath, fx2txt(status));
 
 	return(status);
-}
-
-int
-do_fsync(struct sftp_conn *conn, char *handle, u_int handle_len)
-{
-	Buffer msg;
-	u_int status, id;
-
-	/* Silently return if the extension is not supported */
-	if ((conn->exts & SFTP_EXT_FSYNC) == 0)
-		return -1;
-
-	buffer_init(&msg);
-
-	/* Send fsync request */
-	id = conn->msg_id++;
-
-	buffer_put_char(&msg, SSH2_FXP_EXTENDED);
-	buffer_put_int(&msg, id);
-	buffer_put_cstring(&msg, "fsync@openssh.com");
-	buffer_put_string(&msg, handle, handle_len);
-	send_msg(conn, &msg);
-	debug3("Sent message fsync@openssh.com I:%u", id);
-	buffer_free(&msg);
-
-	status = get_status(conn, id);
-	if (status != SSH2_FX_OK)
-		error("Couldn't sync file: %s", fx2txt(status));
-
-	return status;
 }
 
 #ifdef notyet
@@ -1019,7 +981,7 @@ send_read_request(struct sftp_conn *conn, u_int id, u_int64_t offset,
 
 int
 do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
-    Attrib *a, int preserve_flag, int resume_flag, int fsync_flag)
+    Attrib *a, int pflag, int resume)
 {
 	Attrib junk;
 	Buffer msg;
@@ -1082,15 +1044,15 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 		return(-1);
 	}
 
-	local_fd = open(local_path,
-	    O_WRONLY | O_CREAT | (resume_flag ? 0 : O_TRUNC), mode | S_IWUSR);
+	local_fd = open(local_path, O_WRONLY | O_CREAT | (resume ? : O_TRUNC),
+	    mode | S_IWUSR);
 	if (local_fd == -1) {
 		error("Couldn't open local file \"%s\" for writing: %s",
 		    local_path, strerror(errno));
 		goto fail;
 	}
 	offset = highwater = 0;
-	if (resume_flag) {
+	if (resume) {
 		if (fstat(local_fd, &st) == -1) {
 			error("Unable to stat local file \"%s\": %s",
 			    local_path, strerror(errno));
@@ -1136,7 +1098,7 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 			    (unsigned long long)offset,
 			    (unsigned long long)offset + buflen - 1,
 			    num_req, max_req);
-			req = xmalloc(sizeof(*req));
+			req = xcalloc(1, sizeof(*req));
 			req->id = conn->msg_id++;
 			req->len = buflen;
 			req->offset = offset;
@@ -1240,7 +1202,7 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 		fatal("Transfer complete, but requests still in queue");
 	/* Truncate at highest contiguous point to avoid holes on interrupt */
 	if (read_error || write_error || interrupted) {
-		if (reordered && resume_flag) {
+		if (reordered && resume) {
 			error("Unable to resume download of \"%s\": "
 			    "server reordered requests", local_path);
 		}
@@ -1250,7 +1212,6 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 	if (read_error) {
 		error("Couldn't read from remote file \"%s\" : %s",
 		    remote_path, fx2txt(status));
-		status = -1;
 		do_close(conn, handle, handle_len);
 	} else if (write_error) {
 		error("Couldn't write to \"%s\": %s", local_path,
@@ -1259,26 +1220,19 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 		do_close(conn, handle, handle_len);
 	} else {
 		status = do_close(conn, handle, handle_len);
-		if (interrupted || status != SSH2_FX_OK)
+		if (interrupted)
 			status = -1;
 		/* Override umask and utimes if asked */
-		if (preserve_flag && fchmod(local_fd, mode) == -1)
+		if (pflag && fchmod(local_fd, mode) == -1)
 			error("Couldn't set mode on \"%s\": %s", local_path,
 			    strerror(errno));
-		if (preserve_flag &&
-		    (a->flags & SSH2_FILEXFER_ATTR_ACMODTIME)) {
+		if (pflag && (a->flags & SSH2_FILEXFER_ATTR_ACMODTIME)) {
 			struct timeval tv[2];
 			tv[0].tv_sec = a->atime;
 			tv[1].tv_sec = a->mtime;
 			tv[0].tv_usec = tv[1].tv_usec = 0;
 			if (utimes(local_path, tv) == -1)
 				error("Can't set times on \"%s\": %s",
-				    local_path, strerror(errno));
-		}
-		if (fsync_flag) {
-			debug("syncing \"%s\"", local_path);
-			if (fsync(local_fd) == -1)
-				error("Couldn't sync file \"%s\": %s",
 				    local_path, strerror(errno));
 		}
 	}
@@ -1290,9 +1244,8 @@ do_download(struct sftp_conn *conn, char *remote_path, char *local_path,
 }
 
 static int
-download_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
-    Attrib *dirattrib, int preserve_flag, int print_flag, int resume_flag,
-    int fsync_flag)
+download_dir_internal(struct sftp_conn *conn, char *src, char *dst,
+    Attrib *dirattrib, int pflag, int printflag, int depth, int resume)
 {
 	int i, ret = 0;
 	SFTP_DIRENT **dir_entries;
@@ -1313,7 +1266,7 @@ download_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 		error("\"%s\" is not a directory", src);
 		return -1;
 	}
-	if (print_flag)
+	if (printflag)
 		printf("Retrieving %s\n", src);
 
 	if (dirattrib->flags & SSH2_FILEXFER_ATTR_PERMISSIONS)
@@ -1344,13 +1297,12 @@ download_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 			    strcmp(filename, "..") == 0)
 				continue;
 			if (download_dir_internal(conn, new_src, new_dst,
-			    depth + 1, &(dir_entries[i]->a), preserve_flag,
-			    print_flag, resume_flag, fsync_flag) == -1)
+			    &(dir_entries[i]->a), pflag, printflag,
+			    depth + 1, resume) == -1)
 				ret = -1;
 		} else if (S_ISREG(dir_entries[i]->a.perm) ) {
 			if (do_download(conn, new_src, new_dst,
-			    &(dir_entries[i]->a), preserve_flag,
-			    resume_flag, fsync_flag) == -1) {
+			    &(dir_entries[i]->a), pflag, resume) == -1) {
 				error("Download of file %s to %s failed",
 				    new_src, new_dst);
 				ret = -1;
@@ -1362,7 +1314,7 @@ download_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 		free(new_src);
 	}
 
-	if (preserve_flag) {
+	if (pflag) {
 		if (dirattrib->flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
 			struct timeval tv[2];
 			tv[0].tv_sec = dirattrib->atime;
@@ -1383,26 +1335,25 @@ download_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 
 int
 download_dir(struct sftp_conn *conn, char *src, char *dst,
-    Attrib *dirattrib, int preserve_flag, int print_flag,
-    int resume_flag, int fsync_flag)
+    Attrib *dirattrib, int pflag, int printflag, int resume)
 {
 	char *src_canon;
 	int ret;
 
 	if ((src_canon = do_realpath(conn, src)) == NULL) {
-		error("Unable to canonicalize path \"%s\"", src);
+		error("Unable to canonicalise path \"%s\"", src);
 		return -1;
 	}
 
-	ret = download_dir_internal(conn, src_canon, dst, 0,
-	    dirattrib, preserve_flag, print_flag, resume_flag, fsync_flag);
+	ret = download_dir_internal(conn, src_canon, dst,
+	    dirattrib, pflag, printflag, 0, resume);
 	free(src_canon);
 	return ret;
 }
 
 int
 do_upload(struct sftp_conn *conn, char *local_path, char *remote_path,
-    int preserve_flag, int fsync_flag)
+    int pflag)
 {
 	int local_fd;
 	int status = SSH2_FX_OK;
@@ -1446,7 +1397,7 @@ do_upload(struct sftp_conn *conn, char *local_path, char *remote_path,
 	a.flags &= ~SSH2_FILEXFER_ATTR_SIZE;
 	a.flags &= ~SSH2_FILEXFER_ATTR_UIDGID;
 	a.perm &= 0777;
-	if (!preserve_flag)
+	if (!pflag)
 		a.flags &= ~SSH2_FILEXFER_ATTR_ACMODTIME;
 
 	buffer_init(&msg);
@@ -1500,7 +1451,7 @@ do_upload(struct sftp_conn *conn, char *local_path, char *remote_path,
 			    strerror(errno));
 
 		if (len != 0) {
-			ack = xmalloc(sizeof(*ack));
+			ack = xcalloc(1, sizeof(*ack));
 			ack->id = ++id;
 			ack->offset = offset;
 			ack->len = len;
@@ -1574,11 +1525,8 @@ do_upload(struct sftp_conn *conn, char *local_path, char *remote_path,
 	}
 
 	/* Override umask and utimes if asked */
-	if (preserve_flag)
+	if (pflag)
 		do_fsetstat(conn, handle, handle_len, &a);
-
-	if (fsync_flag)
-		(void)do_fsync(conn, handle, handle_len);
 
 	if (do_close(conn, handle, handle_len) != SSH2_FX_OK)
 		status = -1;
@@ -1588,8 +1536,8 @@ do_upload(struct sftp_conn *conn, char *local_path, char *remote_path,
 }
 
 static int
-upload_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
-    int preserve_flag, int print_flag, int fsync_flag)
+upload_dir_internal(struct sftp_conn *conn, char *src, char *dst,
+    int pflag, int printflag, int depth)
 {
 	int ret = 0, status;
 	DIR *dirp;
@@ -1612,7 +1560,7 @@ upload_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 		error("\"%s\" is not a directory", src);
 		return -1;
 	}
-	if (print_flag)
+	if (printflag)
 		printf("Entering %s\n", src);
 
 	attrib_clear(&a);
@@ -1620,7 +1568,7 @@ upload_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 	a.flags &= ~SSH2_FILEXFER_ATTR_SIZE;
 	a.flags &= ~SSH2_FILEXFER_ATTR_UIDGID;
 	a.perm &= 01777;
-	if (!preserve_flag)
+	if (!pflag)
 		a.flags &= ~SSH2_FILEXFER_ATTR_ACMODTIME;
 
 	status = do_mkdir(conn, dst, &a, 0);
@@ -1658,12 +1606,10 @@ upload_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 				continue;
 
 			if (upload_dir_internal(conn, new_src, new_dst,
-			    depth + 1, preserve_flag, print_flag,
-			    fsync_flag) == -1)
+			    pflag, printflag, depth + 1) == -1)
 				ret = -1;
 		} else if (S_ISREG(sb.st_mode)) {
-			if (do_upload(conn, new_src, new_dst,
-			    preserve_flag, fsync_flag) == -1) {
+			if (do_upload(conn, new_src, new_dst, pflag) == -1) {
 				error("Uploading of file %s to %s failed!",
 				    new_src, new_dst);
 				ret = -1;
@@ -1681,20 +1627,18 @@ upload_dir_internal(struct sftp_conn *conn, char *src, char *dst, int depth,
 }
 
 int
-upload_dir(struct sftp_conn *conn, char *src, char *dst, int preserve_flag,
-    int print_flag, int fsync_flag)
+upload_dir(struct sftp_conn *conn, char *src, char *dst, int printflag,
+    int pflag)
 {
 	char *dst_canon;
 	int ret;
 
 	if ((dst_canon = do_realpath(conn, dst)) == NULL) {
-		error("Unable to canonicalize path \"%s\"", dst);
+		error("Unable to canonicalise path \"%s\"", dst);
 		return -1;
 	}
 
-	ret = upload_dir_internal(conn, src, dst_canon, 0, preserve_flag,
-	    print_flag, fsync_flag);
-
+	ret = upload_dir_internal(conn, src, dst_canon, pflag, printflag, 0);
 	free(dst_canon);
 	return ret;
 }
