@@ -1,4 +1,4 @@
-/* $OpenBSD: bufaux.c,v 1.57 2014/04/16 23:22:45 djm Exp $ */
+/* $OpenBSD: bufaux.c,v 1.56.4.1 2014/04/21 00:30:48 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland

@@ -1,4 +1,4 @@
-/* $OpenBSD: sshd.c,v 1.425 2014/04/19 14:53:48 tedu Exp $ */
+/* $OpenBSD: sshd.c,v 1.420.4.1 2014/04/21 00:30:48 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -64,6 +64,7 @@
 
 #include <openssl/dh.h>
 #include <openssl/bn.h>
+#include <openssl/rand.h>
 
 #include "xmalloc.h"
 #include "ssh.h"
@@ -104,6 +105,13 @@
 #include "roaming.h"
 #include "ssh-sandbox.h"
 #include "version.h"
+
+#ifdef LIBWRAP
+#include <tcpd.h>
+#include <syslog.h>
+int allow_severity = LOG_INFO;
+int deny_severity = LOG_WARNING;
+#endif /* LIBWRAP */
 
 #ifndef O_NOCTTY
 #define O_NOCTTY	0
@@ -583,6 +591,7 @@ demote_sensitive_data(void)
 static void
 privsep_preauth_child(void)
 {
+	u_int32_t rnd[256];
 	gid_t gidset[1];
 	struct passwd *pw;
 
@@ -594,6 +603,10 @@ privsep_preauth_child(void)
 	if (options.gss_authentication)
 		ssh_gssapi_prepare_supported_oids();
 #endif
+
+	arc4random_buf(rnd, sizeof(rnd));
+	RAND_seed(rnd, sizeof(rnd));
+	explicit_bzero(rnd, sizeof(rnd));
 
 	/* Demote the private keys to public keys. */
 	demote_sensitive_data();
@@ -696,6 +709,7 @@ privsep_preauth(Authctxt *authctxt)
 static void
 privsep_postauth(Authctxt *authctxt)
 {
+	u_int32_t rnd[256];
 
 	if (authctxt->pw->pw_uid == 0 || options.use_login) {
 		/* File descriptor passing is broken or root login */
@@ -725,6 +739,10 @@ privsep_postauth(Authctxt *authctxt)
 
 	/* Demote the private keys to public keys. */
 	demote_sensitive_data();
+
+	arc4random_buf(rnd, sizeof(rnd));
+	RAND_seed(rnd, sizeof(rnd));
+	explicit_bzero(rnd, sizeof(rnd));
 
 	/* Drop privileges */
 	do_setusercontext(authctxt->pw);
@@ -1106,6 +1124,7 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 	struct sockaddr_storage from;
 	socklen_t fromlen;
 	pid_t pid;
+	u_char rnd[256];
 
 	/* setup fd set for accept */
 	fdset = NULL;
@@ -1297,6 +1316,14 @@ server_accept_loop(int *sock_in, int *sock_out, int *newsock, int *config_s)
 			}
 
 			close(*newsock);
+
+			/*
+			 * Ensure that our random state differs
+			 * from that of the child
+			 */
+			arc4random_buf(rnd, sizeof(rnd));
+			RAND_seed(rnd, sizeof(rnd));
+			explicit_bzero(rnd, sizeof(rnd));
 		}
 
 		/* child process check (or debug mode) */
@@ -1892,6 +1919,23 @@ main(int ac, char **av)
 	 */
 	remote_ip = get_remote_ipaddr();
 
+#ifdef LIBWRAP
+	/* Check whether logins are denied from this host. */
+	if (packet_connection_is_on_socket()) {
+		struct request_info req;
+
+		request_init(&req, RQ_DAEMON, __progname, RQ_FILE, sock_in, 0);
+		fromhost(&req);
+
+		if (!hosts_access(&req)) {
+			debug("Connection refused by tcp wrapper");
+			refuse(&req);
+			/* NOTREACHED */
+			fatal("libwrap refuse returns");
+		}
+	}
+#endif /* LIBWRAP */
+
 	/* Log the connection. */
 	verbose("Connection from %s port %d on %s port %d",
 	    remote_ip, remote_port,
@@ -2246,7 +2290,6 @@ sshd_hostkey_sign(Key *privkey, Key *pubkey, u_char **signature, u_int *slen,
 static void
 do_ssh2_kex(void)
 {
-	char *myproposal[PROPOSAL_MAX] = { KEX_SERVER };
 	Kex *kex;
 
 	if (options.ciphers != NULL) {
@@ -2321,8 +2364,7 @@ cleanup_exit(int i)
 {
 	if (the_authctxt) {
 		do_cleanup(the_authctxt);
-		if (use_privsep && privsep_is_preauth &&
-		    pmonitor != NULL && pmonitor->m_pid > 1) {
+		if (use_privsep && privsep_is_preauth && pmonitor->m_pid > 1) {
 			debug("Killing privsep child %d", pmonitor->m_pid);
 			if (kill(pmonitor->m_pid, SIGKILL) != 0 &&
 			    errno != ESRCH)
