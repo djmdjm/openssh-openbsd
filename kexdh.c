@@ -44,9 +44,9 @@ kex_dh_hash(
     const u_char *ckexinit, size_t ckexinitlen,
     const u_char *skexinit, size_t skexinitlen,
     const u_char *serverhostkeyblob, size_t sbloblen,
-    const BIGNUM *client_dh_pub,
-    const BIGNUM *server_dh_pub,
-    const BIGNUM *shared_secret,
+    const struct sshbn *client_dh_pub,
+    const struct sshbn *server_dh_pub,
+    const struct sshbn *shared_secret,
     u_char *hash, size_t *hashlen)
 {
 	struct sshbuf *b;
@@ -66,9 +66,9 @@ kex_dh_hash(
 	    (r = sshbuf_put_u8(b, SSH2_MSG_KEXINIT)) != 0 ||
 	    (r = sshbuf_put(b, skexinit, skexinitlen)) != 0 ||
 	    (r = sshbuf_put_string(b, serverhostkeyblob, sbloblen)) != 0 ||
-	    (r = sshbuf_put_bignum2(b, client_dh_pub)) != 0 ||
-	    (r = sshbuf_put_bignum2(b, server_dh_pub)) != 0 ||
-	    (r = sshbuf_put_bignum2(b, shared_secret)) != 0) {
+	    (r = sshbuf_put_bignum2_wrap(b, client_dh_pub)) != 0 ||
+	    (r = sshbuf_put_bignum2_wrap(b, server_dh_pub)) != 0 ||
+	    (r = sshbuf_put_bignum2_wrap(b, shared_secret)) != 0) {
 		sshbuf_free(b);
 		return r;
 	}

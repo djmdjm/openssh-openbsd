@@ -73,6 +73,7 @@
 #include "roaming.h"
 
 #include "ssherr.h"
+#include "openssl-wrap.h" /* XXX */
 
 /* Imports */
 extern int compat20;
@@ -171,11 +172,11 @@ mm_request_receive_expect(int sock, enum monitor_reqtype type, Buffer *m)
 }
 
 #ifdef WITH_OPENSSL
-DH *
+struct sshdh *
 mm_choose_dh(int min, int nbits, int max)
 {
-	BIGNUM *p, *g;
-	int success = 0;
+	struct sshbn *p, *g;
+	int r, success = 0;
 	Buffer m;
 
 	buffer_init(&m);
@@ -192,17 +193,16 @@ mm_choose_dh(int min, int nbits, int max)
 	if (success == 0)
 		fatal("%s: MONITOR_ANS_MODULI failed", __func__);
 
-	if ((p = BN_new()) == NULL)
+	if ((p = sshbn_new()) == NULL || (g = sshbn_new()) == NULL)
 		fatal("%s: BN_new failed", __func__);
-	if ((g = BN_new()) == NULL)
-		fatal("%s: BN_new failed", __func__);
-	buffer_get_bignum2(&m, p);
-	buffer_get_bignum2(&m, g);
+	if ((r = sshbuf_get_bignum2_wrap(&m, p)) != 0 ||
+	    (r = sshbuf_get_bignum2_wrap(&m, g)) != 0)
+		fatal("%s: sshbuf_get_bignum2_wrap: %s", __func__, ssh_err(r));
 
 	debug3("%s: remaining %d", __func__, buffer_len(&m));
 	buffer_free(&m);
 
-	return (dh_new_group(g, p));
+	return (sshdh_new_group(g, p));
 }
 #endif
 

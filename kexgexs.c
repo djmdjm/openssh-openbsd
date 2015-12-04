@@ -66,6 +66,7 @@ input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
 {
 	struct ssh *ssh = ctxt;
 	struct kex *kex = ssh->kex;
+	struct sshbn *dh_g = NULL, *dh_p = NULL;
 	int r;
 	u_int min = 0, max = 0, nbits = 0;
 
@@ -96,10 +97,15 @@ input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
+	if ((dh_p = sshdh_p(kex->dh)) == NULL ||
+	    (dh_g = sshdh_g(kex->dh)) == NULL) {
+		r = SSH_ERR_INTERNAL_ERROR;
+		goto out;
+	}
 	debug("SSH2_MSG_KEX_DH_GEX_GROUP sent");
 	if ((r = sshpkt_start(ssh, SSH2_MSG_KEX_DH_GEX_GROUP)) != 0 ||
-	    (r = sshpkt_put_bignum2(ssh, kex->dh->p)) != 0 ||
-	    (r = sshpkt_put_bignum2(ssh, kex->dh->g)) != 0 ||
+	    (r = sshpkt_put_bignum2_wrap(ssh, dh_p)) != 0 ||
+	    (r = sshpkt_put_bignum2_wrap(ssh, dh_g)) != 0 ||
 	    (r = sshpkt_send(ssh)) != 0)
 		goto out;
 
@@ -111,6 +117,8 @@ input_kex_dh_gex_request(int type, u_int32_t seq, void *ctxt)
 	ssh_dispatch_set(ssh, SSH2_MSG_KEX_DH_GEX_INIT, &input_kex_dh_gex_init);
 	r = 0;
  out:
+	sshbn_free(dh_g);
+	sshbn_free(dh_p);
 	return r;
 }
 
@@ -119,13 +127,15 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 {
 	struct ssh *ssh = ctxt;
 	struct kex *kex = ssh->kex;
-	BIGNUM *shared_secret = NULL, *dh_client_pub = NULL;
+	struct sshbn *dh_g = NULL, *dh_p = NULL;
+	struct sshbn *dh_client_pub = NULL;
+	struct sshbn *dh_server_pub = NULL;
+	struct sshbn *shared_secret = NULL;
 	struct sshkey *server_host_public, *server_host_private;
-	u_char *kbuf = NULL, *signature = NULL, *server_host_key_blob = NULL;
+	u_char *signature = NULL, *server_host_key_blob = NULL;
 	u_char hash[SSH_DIGEST_MAX_LENGTH];
-	size_t sbloblen, slen;
-	size_t klen = 0, hashlen;
-	int kout, r;
+	size_t sbloblen, slen, hashlen;
+	int r;
 
 	if (kex->load_host_public_key == NULL ||
 	    kex->load_host_private_key == NULL) {
@@ -142,11 +152,11 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 	}
 
 	/* key, cert */
-	if ((dh_client_pub = BN_new()) == NULL) {
+	if ((dh_client_pub = sshbn_new()) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
-	if ((r = sshpkt_get_bignum2(ssh, dh_client_pub)) != 0 ||
+	if ((r = sshpkt_get_bignum2_wrap(ssh, dh_client_pub)) != 0 ||
 	    (r = sshpkt_get_end(ssh)) != 0)
 		goto out;
 
@@ -163,23 +173,19 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 	BN_print_fp(stderr, kex->dh->pub_key);
 	fprintf(stderr, "\n");
 #endif
-	if (!dh_pub_is_valid(kex->dh, dh_client_pub)) {
+	if ((r = dh_pub_is_valid(kex->dh, dh_client_pub)) != 0) {
 		sshpkt_disconnect(ssh, "bad client public DH value");
-		r = SSH_ERR_MESSAGE_INCOMPLETE;
 		goto out;
 	}
-
-	klen = DH_size(kex->dh);
-	if ((kbuf = malloc(klen)) == NULL ||
-	    (shared_secret = BN_new()) == NULL) {
-		r = SSH_ERR_ALLOC_FAIL;
+	if ((dh_server_pub = sshdh_pubkey(kex->dh)) == NULL ||
+	    (dh_p = sshdh_p(kex->dh)) == NULL ||
+	    (dh_g = sshdh_g(kex->dh)) == NULL) {
+		r = SSH_ERR_INTERNAL_ERROR;
 		goto out;
 	}
-	if ((kout = DH_compute_key(kbuf, dh_client_pub, kex->dh)) < 0 ||
-	    BN_bin2bn(kbuf, kout, shared_secret) == NULL) {
-		r = SSH_ERR_LIBCRYPTO_ERROR;
+	if ((r = sshdh_compute_key(kex->dh, dh_client_pub,
+	    &shared_secret)) != 0)
 		goto out;
-	}
 #ifdef DEBUG_KEXDH
 	dump_digest("shared secret", kbuf, kout);
 #endif
@@ -196,9 +202,9 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 	    sshbuf_ptr(kex->my), sshbuf_len(kex->my),
 	    server_host_key_blob, sbloblen,
 	    kex->min, kex->nbits, kex->max,
-	    kex->dh->p, kex->dh->g,
+	    dh_p, dh_g,
 	    dh_client_pub,
-	    kex->dh->pub_key,
+	    dh_server_pub,
 	    shared_secret,
 	    hash, &hashlen)) != 0)
 		goto out;
@@ -224,7 +230,7 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 	/* send server hostkey, DH pubkey 'f' and singed H */
 	if ((r = sshpkt_start(ssh, SSH2_MSG_KEX_DH_GEX_REPLY)) != 0 ||
 	    (r = sshpkt_put_string(ssh, server_host_key_blob, sbloblen)) != 0 ||
-	    (r = sshpkt_put_bignum2(ssh, kex->dh->pub_key)) != 0 ||     /* f */
+	    (r = sshpkt_put_bignum2_wrap(ssh, dh_server_pub)) != 0 ||	/* f */
 	    (r = sshpkt_put_string(ssh, signature, slen)) != 0 ||
 	    (r = sshpkt_send(ssh)) != 0)
 		goto out;
@@ -232,16 +238,14 @@ input_kex_dh_gex_init(int type, u_int32_t seq, void *ctxt)
 	if ((r = kex_derive_keys_bn(ssh, hash, hashlen, shared_secret)) == 0)
 		r = kex_send_newkeys(ssh);
  out:
-	DH_free(kex->dh);
+	explicit_bzero(hash, sizeof(hash));
+	sshbn_free(dh_p);
+	sshbn_free(dh_g);
+	sshbn_free(shared_secret);
+	sshbn_free(dh_client_pub);
+	sshbn_free(dh_server_pub);
+	sshdh_free(kex->dh);
 	kex->dh = NULL;
-	if (dh_client_pub)
-		BN_clear_free(dh_client_pub);
-	if (kbuf) {
-		explicit_bzero(kbuf, klen);
-		free(kbuf);
-	}
-	if (shared_secret)
-		BN_clear_free(shared_secret);
 	free(server_host_key_blob);
 	free(signature);
 	return r;

@@ -63,6 +63,7 @@ input_kex_ecdh_init(int type, u_int32_t seq, void *ctxt)
 	const EC_GROUP *group;
 	const EC_POINT *public_key;
 	BIGNUM *shared_secret = NULL;
+	struct sshbn *xxx_shared_secret = NULL;
 	struct sshkey *server_host_private, *server_host_public;
 	u_char *server_host_key_blob = NULL, *signature = NULL;
 	u_char *kbuf = NULL;
@@ -179,8 +180,13 @@ input_kex_ecdh_init(int type, u_int32_t seq, void *ctxt)
 	    (r = sshpkt_put_string(ssh, signature, slen)) != 0 ||
 	    (r = sshpkt_send(ssh)) != 0)
 		goto out;
-
-	if ((r = kex_derive_keys_bn(ssh, hash, hashlen, shared_secret)) == 0)
+	/* XXX */
+	if ((xxx_shared_secret = sshbn_from_bignum(shared_secret)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((r = kex_derive_keys_bn(ssh, hash, hashlen,
+	    xxx_shared_secret)) == 0)
 		r = kex_send_newkeys(ssh);
  out:
 	explicit_bzero(hash, sizeof(hash));
@@ -196,6 +202,7 @@ input_kex_ecdh_init(int type, u_int32_t seq, void *ctxt)
 	}
 	if (shared_secret)
 		BN_clear_free(shared_secret);
+	sshbn_free(xxx_shared_secret);
 	free(server_host_key_blob);
 	free(signature);
 	return r;

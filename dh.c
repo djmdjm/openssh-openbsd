@@ -38,6 +38,7 @@
 #include "log.h"
 #include "misc.h"
 #include "ssherr.h"
+#include "openssl-wrap.h" /* XXX */
 
 static int
 parse_prime(int linenum, char *line, struct dhgroup *dhg)
@@ -46,6 +47,7 @@ parse_prime(int linenum, char *line, struct dhgroup *dhg)
 	char *strsize, *gen, *prime;
 	const char *errstr = NULL;
 	long long n;
+	int r;
 
 	dhg->p = dhg->g = NULL;
 	cp = line;
@@ -106,53 +108,42 @@ parse_prime(int linenum, char *line, struct dhgroup *dhg)
 		goto fail;
 	}
 
-	if ((dhg->g = BN_new()) == NULL ||
-	    (dhg->p = BN_new()) == NULL) {
-		error("parse_prime: BN_new failed");
+	if ((r = sshbn_from_hex(gen, &dhg->g)) != 0 ||
+	    (r = sshbn_from_hex(prime, &dhg->p)) != 0)
+		goto fail;
+	if (sshbn_bits(dhg->p) != dhg->size) {
+		error("moduli:%d: prime has wrong size: actual %zu listed %zu",
+		    linenum, sshbn_bits(dhg->p), dhg->size - 1);
 		goto fail;
 	}
-	if (BN_hex2bn(&dhg->g, gen) == 0) {
-		error("moduli:%d: could not parse generator value", linenum);
-		goto fail;
-	}
-	if (BN_hex2bn(&dhg->p, prime) == 0) {
-		error("moduli:%d: could not parse prime value", linenum);
-		goto fail;
-	}
-	if (BN_num_bits(dhg->p) != dhg->size) {
-		error("moduli:%d: prime has wrong size: actual %d listed %d",
-		    linenum, BN_num_bits(dhg->p), dhg->size - 1);
-		goto fail;
-	}
-	if (BN_cmp(dhg->g, BN_value_one()) <= 0) {
+	if (sshbn_cmp(dhg->g, sshbn_value_1()) <= 0) {
 		error("moduli:%d: generator is invalid", linenum);
 		goto fail;
 	}
 	return 1;
 
  fail:
-	if (dhg->g != NULL)
-		BN_clear_free(dhg->g);
-	if (dhg->p != NULL)
-		BN_clear_free(dhg->p);
+	sshbn_free(dhg->g);
+	sshbn_free(dhg->p);
 	dhg->g = dhg->p = NULL;
 	return 0;
 }
 
-DH *
-choose_dh(int min, int wantbits, int max)
+struct sshdh *
+choose_dh(u_int min, u_int wantbits, u_int max)
 {
 	FILE *f;
 	char line[4096];
-	int best, bestcount, which;
-	int linenum;
+	u_int best, bestcount, which, linenum;
+	int r;
 	struct dhgroup dhg;
+	struct sshdh *dh = NULL;
 
 	if ((f = fopen(_PATH_DH_MODULI, "r")) == NULL &&
 	    (f = fopen(_PATH_DH_PRIMES, "r")) == NULL) {
 		logit("WARNING: %s does not exist, using fixed modulus",
 		    _PATH_DH_MODULI);
-		return (dh_new_group_fallback(max));
+		goto fallback;
 	}
 
 	linenum = 0;
@@ -161,8 +152,8 @@ choose_dh(int min, int wantbits, int max)
 		linenum++;
 		if (!parse_prime(linenum, line, &dhg))
 			continue;
-		BN_clear_free(dhg.g);
-		BN_clear_free(dhg.p);
+		sshbn_free(dhg.g);
+		sshbn_free(dhg.p);
 
 		if (dhg.size > max || dhg.size < min)
 			continue;
@@ -180,7 +171,7 @@ choose_dh(int min, int wantbits, int max)
 	if (bestcount == 0) {
 		fclose(f);
 		logit("WARNING: no suitable primes in %s", _PATH_DH_PRIMES);
-		return (dh_new_group_fallback(max));
+		goto fallback;
 	}
 
 	linenum = 0;
@@ -191,8 +182,8 @@ choose_dh(int min, int wantbits, int max)
 		if ((dhg.size > max || dhg.size < min) ||
 		    dhg.size != best ||
 		    linenum++ != which) {
-			BN_clear_free(dhg.g);
-			BN_clear_free(dhg.p);
+			sshbn_free(dhg.g);
+			sshbn_free(dhg.p);
 			continue;
 		}
 		break;
@@ -201,109 +192,104 @@ choose_dh(int min, int wantbits, int max)
 	if (linenum != which+1) {
 		logit("WARNING: line %d disappeared in %s, giving up",
 		    which, _PATH_DH_PRIMES);
-		return (dh_new_group_fallback(max));
+ fallback:
+		if ((r = dh_new_group_fallback(max, &dh)) != 0)
+			fatal("%s: dh_new_group_fallback: %s",
+			    __func__, ssh_err(r));
+		return dh;
 	}
 
-	return (dh_new_group(dhg.g, dhg.p));
+	return (sshdh_new_group(dhg.g, dhg.p));
 }
 
 /* diffie-hellman-groupN-sha1 */
-
 int
-dh_pub_is_valid(DH *dh, BIGNUM *dh_pub)
+dh_pub_is_valid(struct sshdh *dh, struct sshbn *dh_pub)
 {
-	int i;
-	int n = BN_num_bits(dh_pub);
-	int bits_set = 0;
-	BIGNUM *tmp;
+	size_t i;
+	size_t n;
+	int r, freeme = 0, bits_set = 0;
+	struct sshbn *dh_p = NULL, *tmp = NULL;
 
-	if (dh_pub->neg) {
-		logit("invalid public DH value: negative");
-		return 0;
+	if (dh_pub == NULL) {
+		if ((dh_pub = sshdh_pubkey(dh)) == NULL)
+			return SSH_ERR_ALLOC_FAIL;
+		freeme = 1;
 	}
-	if (BN_cmp(dh_pub, BN_value_one()) != 1) {	/* pub_exp <= 1 */
+	n = sshbn_bits(dh_pub);
+	if (sshbn_cmp(dh_pub, sshbn_value_1()) != 1) {	/* pub_exp <= 1 */
 		logit("invalid public DH value: <= 1");
-		return 0;
+		r = SSH_ERR_INVALID_FORMAT;
+		goto out;
 	}
-
-	if ((tmp = BN_new()) == NULL) {
-		error("%s: BN_new failed", __func__);
-		return 0;
+	if ((dh_p = sshdh_p(dh)) == NULL) {
+		error("%s: sshdh_p failed", __func__);
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
 	}
-	if (!BN_sub(tmp, dh->p, BN_value_one()) ||
-	    BN_cmp(dh_pub, tmp) != -1) {		/* pub_exp > p-2 */
-		BN_clear_free(tmp);
+	if ((tmp = sshbn_new()) == NULL) {
+		error("%s: sshbn_new failed", __func__);
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((r = sshbn_sub(tmp, dh_p, sshbn_value_1())) != 0) {
+		error("%s: sshbn_sub: %s", __func__, ssh_err(r));
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	if ((r = sshbn_cmp(dh_pub, tmp)) != -1) {	/* pub_exp > p-2 */
 		logit("invalid public DH value: >= p-1");
-		return 0;
+		r = SSH_ERR_INVALID_FORMAT;
+		goto out;
 	}
-	BN_clear_free(tmp);
-
 	for (i = 0; i <= n; i++)
-		if (BN_is_bit_set(dh_pub, i))
+		if (sshbn_is_bit_set(dh_pub, i))
 			bits_set++;
-	debug2("bits set: %d/%d", bits_set, BN_num_bits(dh->p));
+	debug2("bits set: %d/%zu", bits_set, sshbn_bits(dh_p));
 
 	/* if g==2 and bits_set==1 then computing log_g(dh_pub) is trivial */
-	if (bits_set > 1)
-		return 1;
+	if (bits_set <= 1) {
+		logit("invalid public DH value (%d/%zu)",
+		    bits_set, sshbn_bits(dh_p));
+		r = SSH_ERR_INVALID_FORMAT;
+		goto out;
+	}
 
-	logit("invalid public DH value (%d/%d)", bits_set, BN_num_bits(dh->p));
+	/* success */
+	r = 0;
+ out:
+	sshbn_free(dh_p);
+	sshbn_free(tmp);
+	if (freeme)
+		sshbn_free(dh_pub);
+	return r;
+}
+
+int
+dh_gen_key(struct sshdh *dh, u_int need)
+{
+	size_t pbits;
+	struct sshbn *dh_p;
+	int r;
+
+	if ((dh_p = sshdh_p(dh)) == NULL) {
+		error("%s: sshdh_p failed", __func__);
+		return 0;
+	}
+	if (need == 0 ||
+	    (pbits = sshbn_bits(dh_p)) == 0 ||
+	    need > INT_MAX / 2 || 2 * need > pbits) {
+		sshbn_free(dh_p);
+		return SSH_ERR_INVALID_ARGUMENT;
+	}
+	if ((r = sshdh_generate(dh, MIN(need * 2, pbits - 1))) != 0 ||
+	    (r = dh_pub_is_valid(dh, NULL)) != 0)
+		return r;
 	return 0;
 }
 
 int
-dh_gen_key(DH *dh, int need)
-{
-	int pbits;
-
-	if (need < 0 || dh->p == NULL ||
-	    (pbits = BN_num_bits(dh->p)) <= 0 ||
-	    need > INT_MAX / 2 || 2 * need > pbits)
-		return SSH_ERR_INVALID_ARGUMENT;
-	dh->length = MIN(need * 2, pbits - 1);
-	if (DH_generate_key(dh) == 0 ||
-	    !dh_pub_is_valid(dh, dh->pub_key)) {
-		BN_clear_free(dh->priv_key);
-		return SSH_ERR_LIBCRYPTO_ERROR;
-	}
-	return 0;
-}
-
-DH *
-dh_new_group_asc(const char *gen, const char *modulus)
-{
-	DH *dh;
-
-	if ((dh = DH_new()) == NULL)
-		return NULL;
-	if (BN_hex2bn(&dh->p, modulus) == 0 ||
-	    BN_hex2bn(&dh->g, gen) == 0) {
-		DH_free(dh);
-		return NULL;
-	}
-	return (dh);
-}
-
-/*
- * This just returns the group, we still need to generate the exchange
- * value.
- */
-
-DH *
-dh_new_group(BIGNUM *gen, BIGNUM *modulus)
-{
-	DH *dh;
-
-	if ((dh = DH_new()) == NULL)
-		return NULL;
-	dh->p = modulus;
-	dh->g = gen;
-
-	return (dh);
-}
-
-DH *
-dh_new_group1(void)
+dh_new_group1(struct sshdh **dhp)
 {
 	static char *gen = "2", *group1 =
 	    "FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
@@ -312,12 +298,12 @@ dh_new_group1(void)
 	    "E485B576" "625E7EC6" "F44C42E9" "A637ED6B" "0BFF5CB6" "F406B7ED"
 	    "EE386BFB" "5A899FA5" "AE9F2411" "7C4B1FE6" "49286651" "ECE65381"
 	    "FFFFFFFF" "FFFFFFFF";
-
-	return (dh_new_group_asc(gen, group1));
+	
+	return sshdh_new_group_hex(gen, group1, dhp);
 }
 
-DH *
-dh_new_group14(void)
+int
+dh_new_group14(struct sshdh **dhp)
 {
 	static char *gen = "2", *group14 =
 	    "FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
@@ -332,15 +318,15 @@ dh_new_group14(void)
 	    "DE2BCBF6" "95581718" "3995497C" "EA956AE5" "15D22618" "98FA0510"
 	    "15728E5A" "8AACAA68" "FFFFFFFF" "FFFFFFFF";
 
-	return (dh_new_group_asc(gen, group14));
+	return sshdh_new_group_hex(gen, group14, dhp);
 }
 
 /*
  * 4k bit fallback group used by DH-GEX if moduli file cannot be read.
  * Source: MODP group 16 from RFC3526.
  */
-DH *
-dh_new_group_fallback(int max)
+int
+dh_new_group_fallback(int max, struct sshdh **dhp)
 {
 	static char *gen = "2", *group16 =
 	    "FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
@@ -368,10 +354,10 @@ dh_new_group_fallback(int max)
 
 	if (max < 4096) {
 		debug3("requested max size %d, using 2k bit group 14", max);
-		return dh_new_group14();
+		return dh_new_group14(dhp);
 	}
 	debug3("using 4k bit group 16");
-	return (dh_new_group_asc(gen, group16));
+	return sshdh_new_group_hex(gen, group16, dhp);
 }
 
 /*
@@ -381,7 +367,6 @@ dh_new_group_fallback(int max)
  * Management Part 1 (rev 3) limited by the recommended maximum value
  * from RFC4419 section 3.
  */
-
 u_int
 dh_estimate(int bits)
 {

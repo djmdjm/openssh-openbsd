@@ -99,6 +99,7 @@ input_kex_ecdh_reply(int type, u_int32_t seq, void *ctxt)
 	EC_POINT *server_public = NULL;
 	EC_KEY *client_key;
 	BIGNUM *shared_secret = NULL;
+	struct sshbn *xxx_shared_secret = NULL;
 	struct sshkey *server_host_key = NULL;
 	u_char *server_host_key_blob = NULL, *signature = NULL;
 	u_char *kbuf = NULL;
@@ -199,7 +200,13 @@ input_kex_ecdh_reply(int type, u_int32_t seq, void *ctxt)
 		memcpy(kex->session_id, hash, kex->session_id_len);
 	}
 
-	if ((r = kex_derive_keys_bn(ssh, hash, hashlen, shared_secret)) == 0)
+	/* XXX */
+	if ((xxx_shared_secret = sshbn_from_bignum(shared_secret)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((r = kex_derive_keys_bn(ssh, hash, hashlen,
+	    xxx_shared_secret)) == 0)
 		r = kex_send_newkeys(ssh);
  out:
 	explicit_bzero(hash, sizeof(hash));
@@ -215,6 +222,7 @@ input_kex_ecdh_reply(int type, u_int32_t seq, void *ctxt)
 	}
 	if (shared_secret)
 		BN_clear_free(shared_secret);
+	sshbn_free(xxx_shared_secret);
 	sshkey_free(server_host_key);
 	free(server_host_key_blob);
 	free(signature);

@@ -27,20 +27,18 @@
 #define DH_H
 
 struct dhgroup {
-	int size;
-	BIGNUM *g;
-	BIGNUM *p;
+	size_t size;
+	struct sshbn *g;
+	struct sshbn *p;
 };
 
-DH	*choose_dh(int, int, int);
-DH	*dh_new_group_asc(const char *, const char *);
-DH	*dh_new_group(BIGNUM *, BIGNUM *);
-DH	*dh_new_group1(void);
-DH	*dh_new_group14(void);
-DH	*dh_new_group_fallback(int);
+struct sshdh *choose_dh(u_int, u_int, u_int);
+int dh_new_group1(struct sshdh **dhp);
+int dh_new_group14(struct sshdh **dhp);
+int dh_new_group_fallback(int, struct sshdh **dhp);
 
-int	 dh_gen_key(DH *, int);
-int	 dh_pub_is_valid(DH *, BIGNUM *);
+int	 dh_gen_key(struct sshdh *dh, u_int);
+int	 dh_pub_is_valid(struct sshdh *dh, struct sshbn *dh_pub);
 
 u_int	 dh_estimate(int);
 

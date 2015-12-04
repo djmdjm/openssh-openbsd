@@ -46,7 +46,7 @@ SRCS+=	bufec.c bufbn.c rsa.c \
 	kexdh.c kexgex.c kexecdh.c \
 	kexdhc.c kexgexc.c kexecdhc.c \
 	kexdhs.c kexgexs.c kexecdhs.c \
-	ssh-pkcs11.c
+	ssh-pkcs11.c openssl-wrap.c
 .else
 SRCS+=	rijndael.c cipher-aesctr.c
 .endif

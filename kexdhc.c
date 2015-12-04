@@ -50,15 +50,18 @@ int
 kexdh_client(struct ssh *ssh)
 {
 	struct kex *kex = ssh->kex;
+	struct sshbn *dh_client_pub = NULL;
 	int r;
 
 	/* generate and send 'e', client DH public key */
 	switch (kex->kex_type) {
 	case KEX_DH_GRP1_SHA1:
-		kex->dh = dh_new_group1();
+		if ((r = dh_new_group1(&kex->dh)) != 0)
+			return r;
 		break;
 	case KEX_DH_GRP14_SHA1:
-		kex->dh = dh_new_group14();
+		if ((r = dh_new_group14(&kex->dh)) != 0)
+			return r;
 		break;
 	default:
 		r = SSH_ERR_INVALID_ARGUMENT;
@@ -68,22 +71,25 @@ kexdh_client(struct ssh *ssh)
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
+	if ((r = dh_gen_key(kex->dh, kex->we_need * 8)) != 0)
+		goto out;
+	if ((dh_client_pub = sshdh_pubkey(kex->dh)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
 	debug("sending SSH2_MSG_KEXDH_INIT");
-	if ((r = dh_gen_key(kex->dh, kex->we_need * 8)) != 0 ||
-	    (r = sshpkt_start(ssh, SSH2_MSG_KEXDH_INIT)) != 0 ||
-	    (r = sshpkt_put_bignum2(ssh, kex->dh->pub_key)) != 0 ||
+	if ((r = sshpkt_start(ssh, SSH2_MSG_KEXDH_INIT)) != 0 ||
+	    (r = sshpkt_put_bignum2_wrap(ssh, dh_client_pub)) != 0 ||
 	    (r = sshpkt_send(ssh)) != 0)
 		goto out;
 #ifdef DEBUG_KEXDH
-	DHparams_print_fp(stderr, kex->dh);
-	fprintf(stderr, "pub= ");
-	BN_print_fp(stderr, kex->dh->pub_key);
-	fprintf(stderr, "\n");
+	sshdh_dump(kex->dh);
 #endif
 	debug("expecting SSH2_MSG_KEXDH_REPLY");
 	ssh_dispatch_set(ssh, SSH2_MSG_KEXDH_REPLY, &input_kex_dh);
 	r = 0;
  out:
+	sshbn_free(dh_client_pub);
 	return r;
 }
 
@@ -92,12 +98,14 @@ input_kex_dh(int type, u_int32_t seq, void *ctxt)
 {
 	struct ssh *ssh = ctxt;
 	struct kex *kex = ssh->kex;
-	BIGNUM *dh_server_pub = NULL, *shared_secret = NULL;
+	struct sshbn *dh_client_pub = NULL;
+	struct sshbn *dh_server_pub = NULL;
+	struct sshbn *shared_secret = NULL;
 	struct sshkey *server_host_key = NULL;
-	u_char *kbuf = NULL, *server_host_key_blob = NULL, *signature = NULL;
+	u_char *server_host_key_blob = NULL, *signature = NULL;
 	u_char hash[SSH_DIGEST_MAX_LENGTH];
-	size_t klen = 0, slen, sbloblen, hashlen;
-	int kout, r;
+	size_t slen, sbloblen, hashlen;
+	int r;
 
 	if (kex->verify_host_key == NULL) {
 		r = SSH_ERR_INVALID_ARGUMENT;
@@ -120,12 +128,12 @@ input_kex_dh(int type, u_int32_t seq, void *ctxt)
 		goto out;
 	}
 	/* DH parameter f, server public DH key */
-	if ((dh_server_pub = BN_new()) == NULL) {
+	if ((dh_server_pub = sshbn_new()) == NULL) {
 		r = SSH_ERR_ALLOC_FAIL;
 		goto out;
 	}
 	/* signed H */
-	if ((r = sshpkt_get_bignum2(ssh, dh_server_pub)) != 0 ||
+	if ((r = sshpkt_get_bignum2_wrap(ssh, dh_server_pub)) != 0 ||
 	    (r = sshpkt_get_string(ssh, &signature, &slen)) != 0 ||
 	    (r = sshpkt_get_end(ssh)) != 0)
 		goto out;
@@ -135,23 +143,17 @@ input_kex_dh(int type, u_int32_t seq, void *ctxt)
 	fprintf(stderr, "\n");
 	debug("bits %d", BN_num_bits(dh_server_pub));
 #endif
-	if (!dh_pub_is_valid(kex->dh, dh_server_pub)) {
+	if ((r = dh_pub_is_valid(kex->dh, dh_server_pub)) != 0) {
 		sshpkt_disconnect(ssh, "bad server public DH value");
-		r = SSH_ERR_MESSAGE_INCOMPLETE;
 		goto out;
 	}
-
-	klen = DH_size(kex->dh);
-	if ((kbuf = malloc(klen)) == NULL ||
-	    (shared_secret = BN_new()) == NULL) {
-		r = SSH_ERR_ALLOC_FAIL;
+	if ((dh_client_pub = sshdh_pubkey(kex->dh)) == NULL) {
+		r = SSH_ERR_INTERNAL_ERROR;
 		goto out;
 	}
-	if ((kout = DH_compute_key(kbuf, dh_server_pub, kex->dh)) < 0 ||
-	    BN_bin2bn(kbuf, kout, shared_secret) == NULL) {
-		r = SSH_ERR_LIBCRYPTO_ERROR;
+	if ((r = sshdh_compute_key(kex->dh, dh_server_pub,
+	    &shared_secret)) != 0)
 		goto out;
-	}
 #ifdef DEBUG_KEXDH
 	dump_digest("shared secret", kbuf, kout);
 #endif
@@ -164,7 +166,7 @@ input_kex_dh(int type, u_int32_t seq, void *ctxt)
 	    sshbuf_ptr(kex->my), sshbuf_len(kex->my),
 	    sshbuf_ptr(kex->peer), sshbuf_len(kex->peer),
 	    server_host_key_blob, sbloblen,
-	    kex->dh->pub_key,
+	    dh_client_pub,
 	    dh_server_pub,
 	    shared_secret,
 	    hash, &hashlen)) != 0)
@@ -189,17 +191,12 @@ input_kex_dh(int type, u_int32_t seq, void *ctxt)
 		r = kex_send_newkeys(ssh);
  out:
 	explicit_bzero(hash, sizeof(hash));
-	DH_free(kex->dh);
-	kex->dh = NULL;
-	if (dh_server_pub)
-		BN_clear_free(dh_server_pub);
-	if (kbuf) {
-		explicit_bzero(kbuf, klen);
-		free(kbuf);
-	}
-	if (shared_secret)
-		BN_clear_free(shared_secret);
 	sshkey_free(server_host_key);
+	sshbn_free(shared_secret);
+	sshbn_free(dh_server_pub);
+	sshbn_free(dh_client_pub);
+	sshdh_free(kex->dh);
+	kex->dh = NULL;
 	free(server_host_key_blob);
 	free(signature);
 	return r;

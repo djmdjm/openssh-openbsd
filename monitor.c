@@ -550,8 +550,10 @@ monitor_reset_key_state(void)
 int
 mm_answer_moduli(int sock, Buffer *m)
 {
-	DH *dh;
-	int min, want, max;
+	struct sshdh *dh;
+	struct sshbn *dh_p, *dh_g;
+	u_int min, want, max;
+	int r;
 
 	min = buffer_get_int(m);
 	want = buffer_get_int(m);
@@ -571,12 +573,18 @@ mm_answer_moduli(int sock, Buffer *m)
 		buffer_put_char(m, 0);
 		return (0);
 	} else {
-		/* Send first bignum */
+		if ((dh_p = sshdh_p(dh)) == NULL ||
+		    (dh_g = sshdh_g(dh)) == NULL)
+			fatal("%s: bad DH", __func__);
+		/* Send group */
 		buffer_put_char(m, 1);
-		buffer_put_bignum2(m, dh->p);
-		buffer_put_bignum2(m, dh->g);
-
-		DH_free(dh);
+		if ((r = sshbuf_put_bignum2_wrap(m, dh_p)) != 0 ||
+		    (r = sshbuf_put_bignum2_wrap(m, dh_g)) != 0)
+			fatal("%s: sshbuf_put_bignum2_wrap: %s",
+			    __func__, ssh_err(r));
+		sshdh_free(dh);
+		sshbn_free(dh_p);
+		sshbn_free(dh_g);
 	}
 	mm_request_send(sock, MONITOR_ANS_MODULI, m);
 	return (0);

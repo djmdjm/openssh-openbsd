@@ -495,8 +495,7 @@ kex_free(struct kex *kex)
 	u_int mode;
 
 #ifdef WITH_OPENSSL
-	if (kex->dh)
-		DH_free(kex->dh);
+	sshdh_free(kex->dh);
 	if (kex->ec_client_key)
 		EC_KEY_free(kex->ec_client_key);
 #endif
@@ -854,14 +853,14 @@ kex_derive_keys(struct ssh *ssh, u_char *hash, u_int hashlen,
 #ifdef WITH_OPENSSL
 int
 kex_derive_keys_bn(struct ssh *ssh, u_char *hash, u_int hashlen,
-    const BIGNUM *secret)
+    const struct sshbn *secret)
 {
 	struct sshbuf *shared_secret;
 	int r;
 
 	if ((shared_secret = sshbuf_new()) == NULL)
 		return SSH_ERR_ALLOC_FAIL;
-	if ((r = sshbuf_put_bignum2(shared_secret, secret)) == 0)
+	if ((r = sshbuf_put_bignum2_wrap(shared_secret, secret)) == 0)
 		r = kex_derive_keys(ssh, hash, hashlen, shared_secret);
 	sshbuf_free(shared_secret);
 	return r;

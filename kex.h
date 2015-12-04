@@ -30,6 +30,8 @@
 #include "buffer.h" /* XXX for typedef */
 #include "key.h" /* XXX for typedef */
 
+#include "openssl-wrap.h" /* XXX */
+
 #ifdef WITH_LEAKMALLOC
 #include "leakmalloc.h"
 #endif
@@ -136,7 +138,7 @@ struct kex {
 	    u_char **, size_t *, const u_char *, size_t, u_int);
 	int	(*kex[KEX_MAX])(struct ssh *);
 	/* kex specific state */
-	DH	*dh;			/* DH */
+	struct sshdh *dh;			/* DH */
 	u_int	min, max, nbits;	/* GEX */
 	EC_KEY	*ec_client_key;		/* ECDH */
 	const EC_GROUP *ec_group;	/* ECDH */
@@ -161,7 +163,8 @@ void	 kex_prop_free(char **);
 int	 kex_send_kexinit(struct ssh *);
 int	 kex_input_kexinit(int, u_int32_t, void *);
 int	 kex_derive_keys(struct ssh *, u_char *, u_int, const struct sshbuf *);
-int	 kex_derive_keys_bn(struct ssh *, u_char *, u_int, const BIGNUM *);
+int	 kex_derive_keys_bn(struct ssh *, u_char *, u_int,
+	    const struct sshbn *);
 int	 kex_send_newkeys(struct ssh *);
 
 int	 kexdh_client(struct ssh *);
@@ -175,13 +178,14 @@ int	 kexc25519_server(struct ssh *);
 
 int	 kex_dh_hash(const char *, const char *,
     const u_char *, size_t, const u_char *, size_t, const u_char *, size_t,
-    const BIGNUM *, const BIGNUM *, const BIGNUM *, u_char *, size_t *);
+    const struct sshbn *, const struct sshbn *,
+    const struct sshbn *, u_char *, size_t *);
 
 int	 kexgex_hash(int, const char *, const char *,
     const u_char *, size_t, const u_char *, size_t, const u_char *, size_t,
     int, int, int,
-    const BIGNUM *, const BIGNUM *, const BIGNUM *,
-    const BIGNUM *, const BIGNUM *,
+    const struct sshbn *, const struct sshbn *, const struct sshbn *,
+    const struct sshbn *, const struct sshbn *,
     u_char *, size_t *);
 
 int kex_ecdh_hash(int, const EC_GROUP *, const char *, const char *,
