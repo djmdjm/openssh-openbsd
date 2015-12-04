@@ -24,29 +24,92 @@ struct sshbn;
 struct sshbuf;
 struct ssh;
 
+/* Allocate a new Diffie-Hellman context. Returns NULL on failure. */
 struct sshdh *sshdh_new(void);
+
+/* Frees a Diffie-Hellman context. */
 void sshdh_free(struct sshdh *dh);
+
+/* Accessors for Diffie-Hellman parameters. Caller must free returned values. */
 struct sshbn *sshdh_pubkey(struct sshdh *dh);
 struct sshbn *sshdh_p(struct sshdh *dh);
 struct sshbn *sshdh_g(struct sshdh *dh);
+
+/* Dump a Diffie-Hellman context to stderr (for debugging) */
 void sshdh_dump(struct sshdh *dh);
-size_t sshdh_shared_key_size(struct sshdh *dh);
+
+/*
+ * Generate a Diffie-Hellman private key. NB. The 'dh' context's group
+ * information must be initialised.
+ * Returns a ssherr.h code on failure or 0 on success.
+ */
+int sshdh_generate(struct sshdh *dh, size_t len);
+
+/*
+ * Compute a shared key using Diffie-Hellman. The 'dh' context must
+ * previously have had sshdh_generate() called.
+ */
 int sshdh_compute_key(struct sshdh *dh, struct sshbn *pubkey,
     struct sshbn **shared_secretp);
-int sshdh_generate(struct sshdh *dh, size_t len);
+
+/*
+ * Initialise the group information for a Diffie-Hellman from explicit
+ * hexadecimal generator and modulus values.
+ * Returns a ssherr.h code on failure or 0 on success.
+ */
 int sshdh_new_group_hex(const char *gen, const char *modulus,
     struct sshdh **dhp);
+
+/*
+ * Initialise the group information for a Diffie-Hellman from explicit
+ * generator and modulus values.
+ * NB. After this call, ownership of 'gen' and 'modulus' is transferred
+ * to the returned Diffie-Hellman context. The caller should not free them.
+ */
 struct sshdh *sshdh_new_group(struct sshbn *gen, struct sshbn *modulus);
 
+/* Allocate a new, zero arbitrary precision integer (bignum) */
 struct sshbn *sshbn_new(void);
+
+/* Clear and free a bignum */
 void sshbn_free(struct sshbn *bn);
+
+/*
+ * Allocate a bignum and initialise it from the specified data, which is
+ * interpreted as unsigned big endian.
+ * Returns a ssherr.h code on failure or 0 on success.
+ */
 int sshbn_from(const void *d, size_t l, struct sshbn **retp);
+
+/*
+ * Allocate a bignum and initialise it from the hexadecimal string provided.
+ * Returns a ssherr.h code on failure or 0 on success.
+ */
 int sshbn_from_hex(const char *hex, struct sshbn **retp);
+
+/* Returns the number of bits in the bignum, or zero on error */
 size_t sshbn_bits(const struct sshbn *bn);
+
+/* Explicit bignums for zero and one */
 const struct sshbn *sshbn_value_0(void);
 const struct sshbn *sshbn_value_1(void);
+
+/*
+ * Compare two bignums, returning -1 if 'a' is less than 'b', 0 if 'a' is
+ * equal to 'b' or 1 if 'a' is greater than 'b'.
+ */
 int sshbn_cmp(const struct sshbn *a, const struct sshbn *b);
+
+/*
+ * Calculate r = b - a.
+ * Returns a ssherr.h code on failure or 0 on success.
+ */
 int sshbn_sub(struct sshbn *r, const struct sshbn *a, const struct sshbn *b);
+
+/*
+ * Tests whether the i'th bit of the bignum is set, basically
+ * returning "(bn & (1 << i)) != 0".
+ */
 int sshbn_is_bit_set(const struct sshbn *bn, size_t i);
 
 /* XXX move to sshbuf.h; rename s/_wrap$// */
