@@ -53,7 +53,7 @@ int sshdh_compute_key(struct sshdh *dh, struct sshbn *pubkey,
     struct sshbn **shared_secretp);
 
 /*
- * Initialise the group information for a Diffie-Hellman from explicit
+ * Initialise the group information for a Diffie-Hellman context from explicit
  * hexadecimal generator and modulus values.
  * Returns a ssherr.h code on failure or 0 on success.
  */
@@ -61,7 +61,7 @@ int sshdh_new_group_hex(const char *gen, const char *modulus,
     struct sshdh **dhp);
 
 /*
- * Initialise the group information for a Diffie-Hellman from explicit
+ * Initialise the group information for a Diffie-Hellman context from explicit
  * generator and modulus values.
  * NB. After this call, ownership of 'gen' and 'modulus' is transferred
  * to the returned Diffie-Hellman context. The caller should not free them.
